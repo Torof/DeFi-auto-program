@@ -156,9 +156,9 @@ If `a * b < 2^512` (virtually always true) AND `c != 0`, the result fits in uint
 #### 💼 Job Market Context
 
 **Interview Red Flags - Using outdated patterns:**
-- ❌ Importing SafeMath in new Solidity 0.8+ code
-- ❌ Not knowing when to use `unchecked`
-- ❌ Can't explain why `unchecked` is safe in a specific case
+- 🚩 Importing SafeMath in new Solidity 0.8+ code
+- 🚩 Not knowing when to use `unchecked`
+- 🚩 Can't explain why `unchecked` is safe in a specific case
 
 **What DeFi teams expect you to know:**
 1. "When would you use `unchecked` in a vault contract?"
@@ -287,9 +287,9 @@ Aave's frontend decodes 60+ custom errors to show specific messages like "Health
    - Show understanding of: error propagation, selector decoding, graceful degradation
 
 **Interview Red Flag:**
-- ❌ Still using `require(condition, "String message")` everywhere in new code
-- ❌ Not knowing how to decode error selectors
-- ❌ Can't explain how errors bubble up in cross-contract calls
+- 🚩 Still using `require(condition, "String message")` everywhere in new code
+- 🚩 Not knowing how to decode error selectors
+- 🚩 Can't explain how errors bubble up in cross-contract calls
 
 > 🔍 **Deep dive:** [Cyfrin Updraft - Custom Errors](https://updraft.cyfrin.io/courses/solidity/fund-me/solidity-custom-errors) provides a tutorial with practical examples. [Solidity Docs - Error Handling](https://docs.soliditylang.org/en/latest/control-structures.html#error-handling-assert-require-revert-and-exceptions) covers how custom errors work with try/catch.
 
@@ -574,9 +574,9 @@ using { add as + } for BalanceDelta global;
    - Bonus: Mention the tradeoff (complexity vs gas savings)
 
 **Interview Red Flags:**
-- ❌ Never heard of UDVTs
-- ❌ Can't explain when you'd use them
-- ❌ Don't know about Uniswap V4's usage (if applying to DEX roles)
+- 🚩 Never heard of UDVTs
+- 🚩 Can't explain when you'd use them
+- 🚩 Don't know about Uniswap V4's usage (if applying to DEX roles)
 
 **Pro tip:** Mentioning you've studied `BalanceDelta.sol` and understand bit-packing shows you can handle complex production code. It's a signal that you're beyond beginner tutorials.
 
@@ -679,8 +679,8 @@ The compiler knows `IERC20.transfer` expects `(address, uint256)` and will rejec
    - Show you know when to use each (prefer encodeCall in new code)
 
 **Interview Red Flag:**
-- ❌ Still using `abi.encodeWithSelector` or `abi.encodeWithSignature` in new code
-- ❌ Not aware of the type safety benefits
+- 🚩 Still using `abi.encodeWithSelector` or `abi.encodeWithSignature` in new code
+- 🚩 Not aware of the type safety benefits
 
 ---
 
@@ -1002,9 +1002,9 @@ Savings: 4 transfers eliminated!
    - Show understanding of: drop-in replacement, gas savings, when it's worth it
 
 **Interview Red Flags:**
-- ❌ Never heard of transient storage (major red flag for modern DeFi roles)
-- ❌ Can't explain EIP-1153 basics
-- ❌ Don't know about Uniswap V4's usage
+- 🚩 Never heard of transient storage (major red flag for modern DeFi roles)
+- 🚩 Can't explain EIP-1153 basics
+- 🚩 Don't know about Uniswap V4's usage
 
 **Pro tip:** If interviewing for a DEX/AMM role, deeply study Uniswap V4's implementation. Mentioning you understand flash accounting puts you ahead of 90% of candidates.
 
