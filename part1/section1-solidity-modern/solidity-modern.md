@@ -57,11 +57,120 @@ Only when you can mathematically prove the operation won't overflow. In DeFi, th
 
 > ⚡ **Common pitfall:** Don't use `unchecked` just because "it probably won't overflow." The gas savings (5-20 gas per operation) aren't worth the risk if your proof is wrong.
 
+💻 **Quick Try:**
+
+Before moving on, open [Remix](https://remix.ethereum.org/) and test this:
+```solidity
+// See the difference yourself
+function testChecked() external pure returns (uint256) {
+    return type(uint256).max + 1;  // Reverts!
+}
+
+function testUnchecked() external pure returns (uint256) {
+    unchecked {
+        return type(uint256).max + 1;  // Wraps to 0
+    }
+}
+```
+Deploy, call both. One reverts, one returns 0. Feel the difference.
+
 🏗️ **Real usage:**
 
 [Uniswap V4's `FullMath.sol`](https://github.com/Uniswap/v4-core/blob/d153b048868a60c2403a3ef5b2301bb247884d46/src/libraries/FullMath.sol) (originally from V3) is a masterclass in `unchecked` usage. Every operation is proven safe through the structure of 512-bit intermediate calculations. Study the `mulDiv` function to see how production DeFi handles complex fixed-point math safely.
 
+#### 🔍 Deep Dive: Understanding `mulDiv` - Math Explained
+
+**The problem it solves:**
+Computing `(a * b) / c` with full precision when the intermediate result `a * b` would overflow uint256.
+
+**Example scenario in DeFi:**
+```solidity
+// Calculate shares when depositing to a vault
+shares = (depositAmount * totalShares) / totalAssets
+
+// If totalShares is huge (10^30) and depositAmount is significant (10^18),
+// the multiplication overflows uint256.max (about 10^77)
+```
+
+**The naive approach fails:**
+```solidity
+// ❌ This overflows when a * b > type(uint256).max
+function mulDivBroken(uint256 a, uint256 b, uint256 c) pure returns (uint256) {
+    return (a * b) / c;  // BOOM! Reverts on large values
+}
+```
+
+**FullMath's solution - use 512-bit intermediate math:**
+
+```
+Step 1: Multiply a * b = 512-bit result (stored as two uint256s)
+        ┌─────────────┬─────────────┐
+        │   high      │     low     │  = a * b (512 bits)
+        └─────────────┴─────────────┘
+
+Step 2: Divide the 512-bit result by c = 256-bit result
+```
+
+**Why this works:**
+- uint256 max ≈ 10^77
+- Two uint256s can hold up to 10^154
+- Nearly impossible to overflow with real DeFi numbers
+
+**The mathematical guarantee:**
+If `a * b < 2^512` (virtually always true) AND `c != 0`, the result fits in uint256 and is exact.
+
+**When you'll see this in DeFi:**
+- ERC-4626 vault share calculations (`convertToShares`, `convertToAssets`)
+- AMM price calculations with large reserves
+- Fixed-point math libraries (Ray/Wad math in Aave, DSMath in MakerDAO)
+
+**How to read the code:**
+1. Start with the tests in Uniswap's repo - see inputs/outputs
+2. Ignore the bit manipulation at first - focus on "why" not "how"
+3. The core insight: multiply first (in 512 bits), divide second (back to 256)
+4. Production code adds optimizations (assembly) - understand the concept first
+
 > 🔍 **Deep dive:** [Consensys Smart Contract Best Practices](https://consensys.github.io/smart-contract-best-practices/) covers integer overflow/underflow security patterns. [Trail of Bits - Building Secure Contracts](https://github.com/crytic/building-secure-contracts) provides development guidelines including arithmetic safety.
+
+#### 🔗 DeFi Pattern Connection
+
+**Where checked arithmetic changed everything:**
+
+1. **Vault Share Math (ERC-4626)**
+   - Pre-0.8: Every vault needed SafeMath for `shares = (assets * totalSupply) / totalAssets`
+   - Post-0.8: Built-in safety, cleaner code
+   - You'll implement this in the Day 1 exercise
+
+2. **AMM Pricing** (Uniswap, Curve, Balancer)
+   - Constant product formula: `x * y = k`
+   - Reserve updates must never overflow
+   - Modern AMMs use `unchecked` only where math proves safety (like in Uniswap's `FullMath`)
+
+3. **Rebasing Tokens** (Aave aTokens, Lido stETH)
+   - Balance = `shares * rebaseIndex / 1e18`
+   - Overflow protection is critical when rebaseIndex grows over years
+   - Checked arithmetic prevents silent corruption
+
+**The pattern:** If you're doing `(a * b) / c` with large numbers in DeFi, you need `mulDiv`. Every major protocol has its own version or uses a library.
+
+#### 💼 Job Market Context
+
+**Interview Red Flags - Using outdated patterns:**
+- ❌ Importing SafeMath in new Solidity 0.8+ code
+- ❌ Not knowing when to use `unchecked`
+- ❌ Can't explain why `unchecked` is safe in a specific case
+
+**What DeFi teams expect you to know:**
+1. "When would you use `unchecked` in a vault contract?"
+   - Good answer: Loop counters, intermediate calculations where inputs are validated, formulas with mathematical guarantees
+
+2. "Why can't we just divide first: `(a / c) * b` instead of `(a * b) / c`?"
+   - Good answer: Lose precision. If `a < c`, you get 0, then 0 * b = 0 (wrong!)
+
+3. "How do you handle multiplication overflow in share price calculations?"
+   - Good answer: Use a `mulDiv` library (OpenZeppelin, Solady, or custom) for precise 512-bit intermediate math
+
+**Pro tip:** In interviews, mention that you understand the tradeoff: checked arithmetic costs gas (~20-30 gas per operation) but prevents exploits. Show you think about both security AND efficiency.
 
 ---
 
@@ -103,6 +212,23 @@ require(balance >= amount, InsufficientBalance(balance, amount));
 
 Custom errors are better for off-chain tooling too — you can decode them by selector without needing string parsing or ABIs.
 
+💻 **Quick Try:**
+
+Test error selectors in Remix:
+```solidity
+error Unauthorized();
+error InsufficientBalance(uint256 available, uint256 needed);
+
+function testErrors() external pure {
+    // Copy the selector from the revert - it's 0x82b42900
+    revert Unauthorized();
+
+    // With parameters: notice how the data includes encoded values
+    revert InsufficientBalance(100, 200);
+}
+```
+Call this, check the revert data in the console. See the 4-byte selector + ABI-encoded parameters.
+
 🏗️ **Real usage:**
 
 Two common patterns in production:
@@ -112,6 +238,58 @@ Two common patterns in production:
 Both work — choose based on your protocol size and organization.
 
 > ⚡ **Common pitfall:** Changing an error signature (e.g., adding a parameter) changes its selector. Update your frontend/indexer decoding logic when you do this, or reverts will decode as "unknown error."
+
+#### 🔗 DeFi Pattern Connection
+
+**Why custom errors matter in DeFi composability:**
+
+1. **Cross-Contract Error Propagation**
+   ```solidity
+   // Your aggregator calls Uniswap
+   try IUniswapV3Pool(pool).swap(...) {
+       // Success path
+   } catch (bytes memory reason) {
+       // Uniswap's custom error bubbles up in 'reason'
+       // Decode the selector to handle specific errors:
+       // - InsufficientLiquidity → try another pool
+       // - InvalidTick → recalculate parameters
+       // - Generic revert → fail the whole transaction
+   }
+   ```
+
+2. **Error-Based Control Flow**
+   - Flash loan callbacks check for specific errors
+   - Aggregators route differently based on pool errors
+   - Multisig wallets decode errors for transaction preview
+
+3. **Frontend Error Handling**
+   - Instead of showing "Transaction reverted"
+   - Decode `InsufficientBalance(100, 200)` → "Need 200 tokens, you have 100"
+   - Better UX = more users = more TVL
+
+**Production example:**
+Aave's frontend decodes 60+ custom errors to show specific messages like "Health factor too low" instead of cryptic hex data.
+
+#### 💼 Job Market Context
+
+**What DeFi teams expect:**
+
+1. **"How do you handle errors when calling external protocols?"**
+   - Good answer: Use try/catch, decode custom error selectors, implement fallback logic based on error type
+   - Better answer: Show code example of catching Uniswap errors and routing to Curve as fallback
+
+2. **"Why use custom errors over require strings in production?"**
+   - Okay answer: Gas savings
+   - Good answer: Gas savings + better off-chain tooling + smaller bytecode
+   - Great answer: Plus explain the tradeoff (error handling complexity in try/catch)
+
+3. **"How would you design error handling for a cross-protocol aggregator?"**
+   - Show understanding of: error propagation, selector decoding, graceful degradation
+
+**Interview Red Flag:**
+- ❌ Still using `require(condition, "String message")` everywhere in new code
+- ❌ Not knowing how to decode error selectors
+- ❌ Can't explain how errors bubble up in cross-contract calls
 
 > 🔍 **Deep dive:** [Cyfrin Updraft - Custom Errors](https://updraft.cyfrin.io/courses/solidity/fund-me/solidity-custom-errors) provides a tutorial with practical examples. [Solidity Docs - Error Handling](https://docs.soliditylang.org/en/latest/control-structures.html#error-handling-assert-require-revert-and-exceptions) covers how custom errors work with try/catch.
 
@@ -170,6 +348,61 @@ function sub(Fixed18 a, Fixed18 b) pure returns (Fixed18) {
 // Now you can use: result = a + b - c
 ```
 
+💻 **Quick Try:**
+
+Build a simple UDVT with an operator in Remix:
+```solidity
+type TokenId is uint256;
+
+using { equals as == } for TokenId global;
+
+function equals(TokenId a, TokenId b) pure returns (bool) {
+    return TokenId.unwrap(a) == TokenId.unwrap(b);
+}
+
+function test() external pure returns (bool) {
+    TokenId id1 = TokenId.wrap(42);
+    TokenId id2 = TokenId.wrap(42);
+    return id1 == id2;  // Uses your custom operator!
+}
+```
+
+#### 🎓 Intermediate Example: Building a Practical UDVT
+
+Before diving into Uniswap V4, let's build a realistic DeFi example - a vault with type-safe shares:
+
+```solidity
+// Type-safe vault shares
+type Shares is uint256;
+type Assets is uint256;
+
+// Global operators
+using { addShares as +, subShares as - } for Shares global;
+using { addAssets as +, subAssets as - } for Assets global;
+
+function addShares(Shares a, Shares b) pure returns (Shares) {
+    return Shares.wrap(Shares.unwrap(a) + Shares.unwrap(b));
+}
+
+function subShares(Shares a, Shares b) pure returns (Shares) {
+    return Shares.wrap(Shares.unwrap(a) - Shares.unwrap(b));
+}
+
+// Similar for Assets...
+
+// Now your vault logic is type-safe:
+function deposit(Assets assets) external returns (Shares) {
+    Shares shares = convertToShares(assets);
+
+    _totalAssets = _totalAssets + assets;  // Can't mix with shares!
+    _totalShares = _totalShares + shares;  // Type enforced ✨
+
+    return shares;
+}
+```
+
+**Why this matters:** Try mixing `Shares` and `Assets` - it won't compile. This prevents the classic bug: `shares + assets` (meaningless operation).
+
 🏗️ **Real usage — Uniswap V4:**
 
 Understanding UDVTs is essential for reading V4 code. They use them extensively:
@@ -177,7 +410,175 @@ Understanding UDVTs is essential for reading V4 code. They use them extensively:
 - [`Currency.sol`](https://github.com/Uniswap/v4-core/blob/d153b048868a60c2403a3ef5b2301bb247884d46/src/types/Currency.sol) — `type Currency is address`, unifies native ETH and ERC-20 handling with custom comparison operators
 - [`BalanceDelta.sol`](https://github.com/Uniswap/v4-core/blob/d153b048868a60c2403a3ef5b2301bb247884d46/src/types/BalanceDelta.sol) — `type BalanceDelta is int256`, packs two `int128` values using bit manipulation with custom `+`, `-`, `==`, `!=` operators
 
-> Spend time with `BalanceDelta.sol` — it shows advanced UDVT patterns including bit-packing and how to implement operators that work across the packed structure.
+#### 🔍 Deep Dive: Understanding `BalanceDelta` Bit-Packing
+
+This is the advanced pattern you'll see in production DeFi. Let's break it down step-by-step.
+
+**The problem:**
+Uniswap V4 needs to track balance changes for two tokens in a pool. Storing them separately costs 2 storage slots (40,000 gas). Packing them into one slot saves 20,000 gas per swap.
+
+**The solution - pack two int128 values into one int256:**
+
+```
+Visual memory layout:
+┌─────────────────────────────┬─────────────────────────────┐
+│      amount0 (128 bits)     │      amount1 (128 bits)     │
+└─────────────────────────────┴─────────────────────────────┘
+                    int256 (256 bits total)
+```
+
+**Step-by-step packing:**
+
+```solidity
+// Input: two separate int128 values
+int128 amount0 = -100;  // Token 0 balance change
+int128 amount1 = 200;   // Token 1 balance change
+
+// Step 1: Cast amount0 to int256 and shift left 128 bits
+int256 packed = int256(amount0) << 128;
+
+// After shift (binary):
+// [amount0 in high 128 bits][empty 128 bits with zeros]
+
+// Step 2: OR with amount1 (fills the low 128 bits)
+packed = packed | int256(amount1);
+
+// Final result (binary):
+// [amount0 in bits 128-255][amount1 in bits 0-127]
+
+// Wrap it in the UDVT
+BalanceDelta delta = BalanceDelta.wrap(packed);
+```
+
+**Step-by-step unpacking:**
+
+```solidity
+// Extract amount0 (high 128 bits)
+int256 unwrapped = BalanceDelta.unwrap(delta);
+int128 amount0 = int128(unwrapped >> 128);  // Shift right 128 bits
+
+// Extract amount1 (low 128 bits)
+int128 amount1 = int128(unwrapped);  // Just truncate (keeps low 128)
+```
+
+**Why the casts work:**
+- `int256 >> 128`: Arithmetic right shift preserves sign (negative stays negative)
+- `int128(int256 value)`: Truncates to low 128 bits
+- The sign bit of each int128 is preserved in its respective half
+
+**Testing your understanding:**
+```solidity
+// What does this pack?
+int128 a = -50;
+int128 b = 100;
+int256 packed = (int256(a) << 128) | int256(b);
+
+// Visual representation:
+// High 128 bits: -50 (sign-extended)
+// Low 128 bits:  100
+// Total: one int256 storing both values
+```
+
+**Custom operators on packed data:**
+
+```solidity
+// Add two BalanceDelta values
+function add(BalanceDelta a, BalanceDelta b) pure returns (BalanceDelta) {
+    // Extract both amounts from 'a'
+    int256 aUnwrapped = BalanceDelta.unwrap(a);
+    int128 a0 = int128(aUnwrapped >> 128);
+    int128 a1 = int128(aUnwrapped);
+
+    // Extract both amounts from 'b'
+    int256 bUnwrapped = BalanceDelta.unwrap(b);
+    int128 b0 = int128(bUnwrapped >> 128);
+    int128 b1 = int128(bUnwrapped);
+
+    // Add them
+    int128 sum0 = a0 + b0;
+    int128 sum1 = a1 + b1;
+
+    // Pack the result
+    int256 packed = (int256(sum0) << 128) | int256(sum1);
+    return BalanceDelta.wrap(packed);
+}
+
+using { add as + } for BalanceDelta global;
+
+// Now you can: result = deltaA + deltaB  (both amounts add component-wise)
+```
+
+**When you'll see this pattern:**
+- AMMs tracking token pair balances (Uniswap V4)
+- Packing timestamp + value in one slot
+- Any time you need two related values accessed together
+
+**📖 How to Study `BalanceDelta.sol`:**
+
+1. **Start with tests** - See how it's constructed and used
+2. **Draw the bit layout** - Literally draw boxes showing which bits are what
+3. **Trace one operation** - Pick `+`, trace through pack/unpack/repack
+4. **Verify with examples** - Test with small numbers in Remix to see the bits
+5. **Read comments** - Uniswap's code comments explain the "why"
+
+**Don't get stuck on:** Assembly optimizations in the Uniswap code. Understand the concept first (pure Solidity), then see how they optimize it.
+
+#### 🔗 DeFi Pattern Connection
+
+**Where UDVTs prevent real bugs:**
+
+1. **"Wrong Token" Bug Class**
+   ```solidity
+   // Without UDVTs - this compiles but is wrong:
+   function swap(address tokenA, address tokenB, uint256 amount) {
+       // Oops - swapped tokenA and tokenB
+       IERC20(tokenB).transferFrom(msg.sender, pool, amount);
+       IERC20(tokenA).transfer(msg.sender, output);
+   }
+
+   // With UDVTs - won't compile:
+   type TokenA is address;
+   type TokenB is address;
+
+   function swap(TokenA a, TokenB b, uint256 amount) {
+       IERC20(TokenB.unwrap(a)).transfer...  // TYPE ERROR! ✨
+   }
+   ```
+
+2. **AMM Pool Identification**
+   - Uniswap V4 uses `type PoolId is bytes32`
+   - Can't accidentally use a random bytes32 as a PoolId
+   - Type system prevents: `pools[someRandomHash]` (compile error)
+
+3. **Vault Shares vs Assets**
+   - `type Shares is uint256` vs `type Assets is uint256`
+   - Prevents: `shares + assets` (meaningless operation caught at compile time)
+   - You'll implement this in the Day 1 exercise
+
+**The pattern:** Use UDVTs for domain-specific identifiers (PoolId, TokenId, OrderId) and values that shouldn't be mixed (Shares vs Assets, Price vs Quantity).
+
+#### 💼 Job Market Context
+
+**What DeFi teams expect:**
+
+1. **"Why does Uniswap V4 use PoolId instead of bytes32?"**
+   - Good answer: Type safety - prevents using random hashes as pool identifiers
+   - Great answer: Plus explain the zero-cost abstraction (no runtime overhead)
+
+2. **"How would you design a type-safe vault?"**
+   - Show understanding of: `type Shares is uint256`, custom operators, preventing shares/assets confusion
+
+3. **"Explain bit-packing in BalanceDelta."**
+   - This is a common interview question for Uniswap-related roles
+   - Expected: Explain the memory layout, how packing/unpacking works, why it saves gas
+   - Bonus: Mention the tradeoff (complexity vs gas savings)
+
+**Interview Red Flags:**
+- ❌ Never heard of UDVTs
+- ❌ Can't explain when you'd use them
+- ❌ Don't know about Uniswap V4's usage (if applying to DEX roles)
+
+**Pro tip:** Mentioning you've studied `BalanceDelta.sol` and understand bit-packing shows you can handle complex production code. It's a signal that you're beyond beginner tutorials.
 
 > 🔍 **Deep dive:** [Uniswap V4 Design Blog](https://blog.uniswap.org/uniswap-v4) explains their architectural reasoning for using UDVTs. [Solidity Blog - User-Defined Operators](https://www.soliditylang.org/blog/2023/02/22/user-defined-operators/) provides an official deep dive on custom operators.
 
@@ -216,6 +617,70 @@ The compiler knows `IERC20.transfer` expects `(address, uint256)` and will rejec
 - Building multicall batches
 - Encoding data for cross-chain messages
 - Anywhere you previously used `abi.encodeWithSelector`
+
+#### 🔗 DeFi Pattern Connection
+
+**Where `abi.encodeCall` matters in DeFi:**
+
+1. **Multicall Routers** (1inch, Paraswap aggregators)
+   ```solidity
+   // Building a batch of swaps
+   bytes[] memory calls = new bytes[](3);
+
+   calls[0] = abi.encodeCall(
+       IUniswap.swap,
+       (tokenA, tokenB, amount, minOut)  // Type-checked!
+   );
+
+   calls[1] = abi.encodeCall(
+       ICurve.exchange,
+       (i, j, dx, min_dy)  // Compiler ensures correct types
+   );
+
+   // Execute batch
+   multicall(calls);
+   ```
+
+2. **Flash Loan Callbacks**
+   ```solidity
+   // Encoding callback data for Aave flash loan
+   bytes memory params = abi.encodeCall(
+       this.executeArbitrage,
+       (token, amount, profitTarget)
+   );
+
+   lendingPool.flashLoan(address(this), assets, amounts, modes, params);
+   ```
+
+3. **Cross-Chain Messages** (LayerZero, Axelar)
+   ```solidity
+   // Encoding a message to execute on destination chain
+   bytes memory payload = abi.encodeCall(
+       IDestination.mint,
+       (recipient, amount, tokenId)  // Type safety prevents costly errors
+   );
+
+   bridge.send(destChainId, destAddress, payload);
+   ```
+
+**Why this matters:** In cross-chain/cross-protocol calls, debugging is expensive (can't just revert and retry). Type safety catches bugs before deployment.
+
+#### 💼 Job Market Context
+
+**What DeFi teams expect:**
+
+1. **"How would you build a multicall router?"**
+   - Good answer: Batch multiple calls, use `abi.encodeCall` for type safety
+   - Great answer: Plus mention gas optimization (batch vs individual), error handling, and security (reentrancy)
+
+2. **"What's the difference between abi.encodeCall and abi.encodeWithSelector?"**
+   - `abi.encodeCall`: Type-checked at compile time
+   - `abi.encodeWithSelector`: No type checking, easy to make mistakes
+   - Show you know when to use each (prefer encodeCall in new code)
+
+**Interview Red Flag:**
+- ❌ Still using `abi.encodeWithSelector` or `abi.encodeWithSignature` in new code
+- ❌ Not aware of the type safety benefits
 
 ---
 
@@ -355,6 +820,28 @@ contract ReentrancyGuard {
 
 The `transient` keyword makes the variable live in transient storage — same slot-based addressing as regular storage, but discarded at the end of every transaction.
 
+💻 **Quick Try:**
+
+Test transient vs regular storage gas costs in Remix:
+```solidity
+contract GasTest {
+    // Regular storage
+    uint256 regularValue;
+
+    // Transient storage
+    uint256 transient transientValue;
+
+    function testRegular() external {
+        regularValue = 1;  // Check gas cost
+    }
+
+    function testTransient() external {
+        transientValue = 1;  // Check gas cost
+    }
+}
+```
+Deploy and compare execution costs. You'll see ~20,000 vs ~100 gas difference.
+
 **📊 Gas comparison:**
 
 | Storage Type | First Write | Warm Write | Savings |
@@ -362,9 +849,164 @@ The `transient` keyword makes the variable live in transient storage — same sl
 | Regular storage (cold) | ~20,000 gas | ~5,000 gas | Baseline |
 | Transient storage | ~100 gas | ~100 gas | **50-200x cheaper** ✨ |
 
+#### 🔍 Understanding Transient Storage at EVM Level
+
+**How it works:**
+
+```
+Regular Storage (SSTORE/SLOAD):
+┌─────────────────────────────────┐
+│  Persists across transactions  │
+│  Written to blockchain state   │
+│  Expensive (disk I/O)           │
+│  Refunds available              │
+└─────────────────────────────────┘
+
+Transient Storage (TSTORE/TLOAD):
+┌─────────────────────────────────┐
+│  Lives only during transaction  │
+│  In-memory (no disk writes)     │
+│  Cheap (~100 gas)               │
+│  Auto-cleared after transaction │
+└─────────────────────────────────┘
+```
+
+**Key properties:**
+1. **Transaction-scoped**: Set in call A, read in call B (same transaction) ✅
+2. **Auto-reset**: Cleared when transaction ends (no manual cleanup needed)
+3. **No refunds**: Unlike SSTORE, no refund mechanism needed (simpler gas accounting)
+4. **Same slot addressing**: Uses storage slots like regular storage
+
+**When to use assembly vs keyword:**
+
+```solidity
+// Use the keyword (0.8.28+) for simple cases:
+bool transient locked;  // Clear, readable
+
+// Use assembly for dynamic slot calculation:
+assembly {
+    let slot := keccak256(add(key, someOffset))
+    tstore(slot, value)  // Dynamic slot access
+}
+```
+
 🏗️ **Real usage:**
 
 [OpenZeppelin's `ReentrancyGuardTransient.sol`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ReentrancyGuardTransient.sol) — their production implementation using the `transient` keyword. Compare it to the classic storage-based [`ReentrancyGuard.sol`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ReentrancyGuard.sol) to see the difference.
+
+#### 🔍 Deep Dive: Uniswap V4 Flash Accounting
+
+**The traditional model** (V1, V2, V3):
+```solidity
+// Transfer tokens IN
+token.transferFrom(user, pool, amountIn);
+
+// Do swap logic
+uint256 amountOut = calculateSwap(amountIn);
+
+// Transfer tokens OUT
+token.transfer(user, amountOut);
+```
+Every swap = 2 token transfers = expensive!
+
+**V4's flash accounting** (using transient storage):
+```solidity
+// Record debt in transient storage
+int256 transient delta0;  // How much pool owes/is owed for token0
+int256 transient delta1;  // How much pool owes/is owed for token1
+
+// During swap: just update deltas (cheap!)
+delta0 -= int256(amountIn);   // Pool gains token0
+delta1 += int256(amountOut);  // Pool owes token1
+
+// At END of transaction: settle all debts at once
+function settle() external {
+    if (delta0 < 0) token0.transferFrom(msg.sender, pool, uint256(-delta0));
+    if (delta1 > 0) token1.transfer(msg.sender, uint256(delta1));
+}
+```
+
+**The breakthrough:**
+- Multiple swaps in one transaction? Update deltas multiple times (cheap)
+- Settle debts ONCE at the end (one transfer per token)
+- Net result: Massive gas savings for multi-hop swaps
+
+**Visualization:**
+```
+Old model (V3):
+Swap A: Transfer IN → Swap → Transfer OUT
+Swap B: Transfer IN → Swap → Transfer OUT
+Swap C: Transfer IN → Swap → Transfer OUT
+Total: 6 transfers
+
+New model (V4):
+Swap A: Update delta (100 gas)
+Swap B: Update delta (100 gas)
+Swap C: Update delta (100 gas)
+Settle: Transfer IN + Transfer OUT (2 transfers total)
+Savings: 4 transfers eliminated!
+```
+
+**Why transient storage is essential:**
+- Deltas must persist across internal calls within the transaction
+- But must be cleared before next transaction (no state pollution)
+- Perfect fit for transient storage
+
+#### 🔗 DeFi Pattern Connection
+
+**Where transient storage changes DeFi:**
+
+1. **Reentrancy Guards** (everywhere)
+   - Before: 20,000 gas per protected function
+   - After: 100 gas per protected function
+   - Every protocol with external calls benefits
+
+2. **Flash Loan State** (Aave, Balancer)
+   - Track "in flash loan" state across callback
+   - Verify repayment before transaction ends
+   - No permanent storage pollution
+
+3. **Multi-Protocol Routing** (aggregators like 1inch)
+   - Track token balances across multiple DEX calls
+   - Settle once at the end
+   - Massive savings for complex routes
+
+4. **Temporary Access Control**
+   - Grant permission for duration of transaction
+   - Auto-revoke when transaction ends
+   - Useful for complex DeFi operations
+
+**The pattern:** Whenever you need state that:
+- Lives across multiple calls in ONE transaction
+- Must be cleared before next transaction
+- Is accessed frequently (gas-sensitive)
+
+→ Use transient storage
+
+#### 💼 Job Market Context
+
+**This is hot right now** - Uniswap V4 just launched with this, every DeFi team is watching.
+
+**What teams expect:**
+
+1. **"Explain Uniswap V4's flash accounting."**
+   - This is THE interview question for DEX roles in 2025-2026
+   - Expected: Explain delta tracking, settlement, why transient storage
+   - Bonus: Explain the gas savings quantitatively
+
+2. **"When would you use transient storage?"**
+   - Good answer: Reentrancy guards, temporary state within transaction
+   - Great answer: Plus mention flash accounting pattern, multi-step operations, the tradeoff (only works within one transaction)
+
+3. **"How would you migrate a reentrancy guard to transient storage?"**
+   - Show understanding of: drop-in replacement, gas savings, when it's worth it
+
+**Interview Red Flags:**
+- ❌ Never heard of transient storage (major red flag for modern DeFi roles)
+- ❌ Can't explain EIP-1153 basics
+- ❌ Don't know about Uniswap V4's usage
+
+**Pro tip:** If interviewing for a DEX/AMM role, deeply study Uniswap V4's implementation. Mentioning you understand flash accounting puts you ahead of 90% of candidates.
 
 > 🔍 **Deep dive:** [EIP-1153](https://eips.ethereum.org/EIPS/eip-1153) includes detailed security considerations. [Uniswap V4 Flash Accounting Docs](https://docs.uniswap.org/contracts/v4/concepts/flash-accounting) shows production usage. [Cyfrin - Uniswap V4 Swap Deep Dive](https://www.cyfrin.io/blog/uniswap-v4-swap-deep-dive-into-execution-and-accounting) provides a technical walkthrough of flash accounting with transient storage.
 
