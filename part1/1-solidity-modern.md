@@ -155,11 +155,6 @@ If `a * b < 2^512` (virtually always true) AND `c != 0`, the result fits in uint
 
 #### 💼 Job Market Context
 
-**Interview Red Flags - Using outdated patterns:**
-- 🚩 Importing SafeMath in new Solidity 0.8+ code
-- 🚩 Not knowing when to use `unchecked`
-- 🚩 Can't explain why `unchecked` is safe in a specific case
-
 **What DeFi teams expect you to know:**
 1. "When would you use `unchecked` in a vault contract?"
    - Good answer: Loop counters, intermediate calculations where inputs are validated, formulas with mathematical guarantees
@@ -169,6 +164,11 @@ If `a * b < 2^512` (virtually always true) AND `c != 0`, the result fits in uint
 
 3. "How do you handle multiplication overflow in share price calculations?"
    - Good answer: Use a `mulDiv` library (OpenZeppelin, Solady, or custom) for precise 512-bit intermediate math
+
+**Interview Red Flags:**
+- 🚩 Importing SafeMath in new Solidity 0.8+ code
+- 🚩 Not knowing when to use `unchecked`
+- 🚩 Can't explain why `unchecked` is safe in a specific case
 
 **Pro tip:** In interviews, mention that you understand the tradeoff: checked arithmetic costs gas (~20-30 gas per operation) but prevents exploits. Show you think about both security AND efficiency.
 
@@ -272,7 +272,7 @@ Aave's frontend decodes 60+ custom errors to show specific messages like "Health
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"How do you handle errors when calling external protocols?"**
    - Good answer: Use try/catch, decode custom error selectors, implement fallback logic based on error type
@@ -286,10 +286,12 @@ Aave's frontend decodes 60+ custom errors to show specific messages like "Health
 3. **"How would you design error handling for a cross-protocol aggregator?"**
    - Show understanding of: error propagation, selector decoding, graceful degradation
 
-**Interview Red Flag:**
+**Interview Red Flags:**
 - 🚩 Still using `require(condition, "String message")` everywhere in new code
 - 🚩 Not knowing how to decode error selectors
 - 🚩 Can't explain how errors bubble up in cross-contract calls
+
+**Pro tip:** When building aggregators or routers, design your error types as a hierarchy — base errors for the protocol, specific errors per module. Teams that do this well (like 1inch, Paraswap) can provide users with actionable revert reasons instead of opaque failures.
 
 > 🔍 **Deep dive:** [Cyfrin Updraft - Custom Errors](https://updraft.cyfrin.io/courses/solidity/fund-me/solidity-custom-errors) provides a tutorial with practical examples. [Solidity Docs - Error Handling](https://docs.soliditylang.org/en/latest/control-structures.html#error-handling-assert-require-revert-and-exceptions) covers how custom errors work with try/catch.
 
@@ -559,7 +561,7 @@ using { add as + } for BalanceDelta global;
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"Why does Uniswap V4 use PoolId instead of bytes32?"**
    - Good answer: Type safety - prevents using random hashes as pool identifiers
@@ -667,7 +669,7 @@ The compiler knows `IERC20.transfer` expects `(address, uint256)` and will rejec
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"How would you build a multicall router?"**
    - Good answer: Batch multiple calls, use `abi.encodeCall` for type safety
@@ -678,9 +680,11 @@ The compiler knows `IERC20.transfer` expects `(address, uint256)` and will rejec
    - `abi.encodeWithSelector`: No type checking, easy to make mistakes
    - Show you know when to use each (prefer encodeCall in new code)
 
-**Interview Red Flag:**
+**Interview Red Flags:**
 - 🚩 Still using `abi.encodeWithSelector` or `abi.encodeWithSignature` in new code
 - 🚩 Not aware of the type safety benefits
+
+**Pro tip:** In multicall/batch architectures, `abi.encodeCall` shines because a single typo in a selector can drain funds. Show interviewers you default to the type-safe option and only drop to `encodeWithSelector` when dealing with dynamic interfaces (e.g., proxy patterns where the target ABI isn't known at compile time).
 
 ---
 
@@ -987,7 +991,7 @@ Savings: 4 transfers eliminated!
 
 **This is hot right now** - Uniswap V4 just launched with this, every DeFi team is watching.
 
-**What teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"Explain Uniswap V4's flash accounting."**
    - This is THE interview question for DEX roles in 2025-2026

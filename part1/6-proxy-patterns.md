@@ -340,7 +340,7 @@ The Diamond pattern allows a single proxy to delegate to **multiple** implementa
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"When would you use UUPS vs Transparent vs no proxy at all?"**
    - Good answer: "UUPS for new deployments, Transparent for legacy, no proxy for trust-minimized core logic"
@@ -350,7 +350,7 @@ The Diamond pattern allows a single proxy to delegate to **multiple** implementa
    - Good answer: "Storage collisions and uninitialized proxies"
    - Great answer: "Three categories: (1) Storage collisions — silent data corruption when layout changes, caught with `forge inspect` in CI. (2) Initialization attacks — front-running `initialize()` calls to take ownership. (3) Trust risk — governance or multisig can change the implementation, which means users are trusting the upgrade authority, not just the code. The best mitigation is timelocked upgrades with on-chain governance"
 
-**🚩 Interview Red Flags:**
+**Interview Red Flags:**
 - 🚩 Not knowing the difference between UUPS and Transparent proxy
 - 🚩 Suggesting Diamond pattern for a simple protocol (over-engineering)
 - 🚩 Not mentioning storage layout risks when discussing upgrades
@@ -528,7 +528,7 @@ contract V2 { uint256 public fee = 100; }             // IN storage at slot 0 �
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"How do you ensure storage layout compatibility between versions?"**
    - Good answer: "Append-only variables, storage gaps, `forge inspect`"
@@ -541,7 +541,7 @@ contract V2 { uint256 public fee = 100; }             // IN storage at slot 0 �
 3. **"What's the uninitialized proxy attack?"**
    - This is a common interview question. Know the Wormhole and Parity examples, and explain the three protections: `initializer` modifier, `_disableInitializers()`, and atomic deploy+initialize
 
-**🚩 Interview Red Flags:**
+**Interview Red Flags:**
 - 🚩 Not knowing about storage layout compatibility
 - 🚩 Forgetting `_disableInitializers()` in implementation constructors
 - 🚩 Not mentioning `forge inspect` or automated layout checking

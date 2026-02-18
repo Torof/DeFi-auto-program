@@ -60,7 +60,7 @@ Post-deployment verification
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"How do you handle multi-chain deployments?"**
    - Good answer: "Same Foundry script with different RPC URLs"
@@ -70,11 +70,13 @@ Post-deployment verification
    - Good answer: "Initialization front-running, wrong constructor args"
    - Great answer: "The biggest risk is initialization: if deploy and initialize aren't atomic, an attacker front-runs `initialize()` and takes ownership (← Section 6 Wormhole example). Second is address-dependent configuration — hardcoded token addresses that differ between chains. Third is gas estimation: a script that works on Sepolia may need different gas on mainnet during congestion. I always dry-run with `forge script` (no `--broadcast`) first"
 
-**🚩 Interview Red Flags:**
+**Interview Red Flags:**
 - 🚩 Deploying without dry-running first
 - 🚩 Not knowing about `CREATE2` deterministic deployment
 - 🚩 Deploying proxy + initialize in separate transactions
 - 🚩 Not verifying contracts on block explorers
+
+**Pro tip:** Study how Permit2 achieved its canonical `0x000000000022D4...` address across every chain — it's the textbook `CREATE2` deployment. Being able to walk through deterministic deployment from salt selection to address prediction shows you understand the full deployment stack, not just `forge script --broadcast`.
 
 ---
 
@@ -469,7 +471,7 @@ safe.filters.Withdraw(null, null, gte(1000000e18))
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"How would you set up operations for a new protocol?"**
    - Good answer: "Safe multisig for admin, Tenderly for monitoring"
@@ -479,7 +481,7 @@ safe.filters.Withdraw(null, null, gte(1000000e18))
    - Good answer: "Tests pass, contract verified, multisig set up"
    - Great answer: "Pre-deployment: all tests pass including fork tests against mainnet, `forge inspect` confirms storage layout, dry-run with `forge script` (no broadcast). Deployment: atomic deploy+initialize, verify source on Etherscan/Sourcify immediately. Post-deployment: read all state variables with `cast call` to confirm configuration, transfer ownership to multisig, set up monitoring alerts, do a small real transaction to verify end-to-end, document all addresses in a deployment manifest"
 
-**🚩 Interview Red Flags:**
+**Interview Red Flags:**
 - 🚩 Single-key ownership for any protocol managing value
 - 🚩 No monitoring or alerting strategy
 - 🚩 Not knowing about Safe multisig

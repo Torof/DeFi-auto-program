@@ -71,7 +71,7 @@ If you've used Hardhat, the key mental shift: **everything happens in Solidity**
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"What testing framework do you use?"**
    - Good answer: "Foundry — I write Solidity tests with fuzz and invariant testing"
@@ -81,7 +81,7 @@ If you've used Hardhat, the key mental shift: **everything happens in Solidity**
    - Good answer: "Fork testing against mainnet"
    - Great answer: "I pin fork tests to specific blocks for determinism, test against multiple market conditions, and use `deal()` instead of impersonating whales. For critical paths, I test against both mainnet and L2 forks"
 
-**🚩 Interview Red Flags:**
+**Interview Red Flags:**
 - 🚩 Only knowing Hardhat/JavaScript testing in 2025+
 - 🚩 Not understanding `vm.prank` vs `vm.startPrank` semantics
 - 🚩 No experience with fuzz or invariant testing
@@ -229,7 +229,7 @@ Run with `forge test --match-contract CheatcodePlayground -vvv` and watch the tr
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"Walk me through how you'd test a time-locked vault"**
    - Good answer: "Use `vm.warp` to advance past the lock period, test both before and after"
@@ -239,10 +239,12 @@ Run with `forge test --match-contract CheatcodePlayground -vvv` and watch the tr
    - Good answer: "Use `makeAddrAndKey` to create signers, then `vm.sign` for EIP-712 digests"
    - Great answer: "I create deterministic test signers with `makeAddrAndKey`, construct EIP-712 typed data hashes matching the contract's `DOMAIN_SEPARATOR`, sign with `vm.sign`, and test both valid signatures and invalid ones (wrong signer, expired deadline, replayed nonce). For EIP-1271, I test both EOA and contract signers"
 
-**🚩 Interview Red Flags:**
+**Interview Red Flags:**
 - 🚩 Using `vm.assume` instead of `bound()` for constraining fuzz inputs
 - 🚩 Not knowing `vm.expectRevert` with custom error selectors (Section 1 pattern)
 - 🚩 Hardcoding block.timestamp instead of using `vm.warp` for time-dependent tests
+
+**Pro tip:** Master `vm.sign` + EIP-712 digest construction — it's the most asked-about Foundry skill in DeFi interviews. Permit flows and meta-transactions are everywhere, and having a reusable EIP-712 test helper in your toolkit signals production experience.
 
 **🏗️ Real usage:**
 
@@ -637,7 +639,7 @@ Ghost variables are your **parallel accounting system** — if the contract's st
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"How do you approach testing a new DeFi protocol?"**
    - Good answer: "Unit tests for individual functions, fuzz tests for properties, invariant tests for system-wide correctness"
@@ -650,7 +652,7 @@ Ghost variables are your **parallel accounting system** — if the contract's st
 3. **"Have you ever found a bug with fuzz/invariant testing?"**
    - This is increasingly common in DeFi interviews. Having a real example (even from your own learning exercises) is powerful
 
-**🚩 Interview Red Flags:**
+**Interview Red Flags:**
 - 🚩 Only writing unit tests with hardcoded values (no fuzzing)
 - 🚩 Not knowing the handler pattern for invariant testing
 - 🚩 Using `fail_on_revert = true` (shows lack of invariant testing experience)
@@ -1012,7 +1014,7 @@ contract DifferentialTest is Test {
 
 #### 💼 Job Market Context
 
-**What DeFi teams expect:**
+**What DeFi teams expect you to know:**
 
 1. **"How would you reproduce a DeFi exploit?"**
    - Good answer: "Fork mainnet at the block before the exploit, replay the transactions"
@@ -1026,7 +1028,7 @@ contract DifferentialTest is Test {
    - Good answer: "Fork test against the deployed protocol"
    - Great answer: "I pin to a specific block for determinism, set up realistic token balances with `deal()`, test the happy path first, then systematically test edge cases — what happens when the external protocol pauses? What happens during extreme market conditions? I test against multiple blocks to catch time-dependent behavior, and I test on both mainnet and relevant L2 forks"
 
-**🚩 Interview Red Flags:**
+**Interview Red Flags:**
 - 🚩 Never having reproduced an exploit (shows no security awareness)
 - 🚩 Optimizing gas without measuring first ("premature optimization")
 - 🚩 Not pinning fork tests to specific block numbers (non-deterministic tests)

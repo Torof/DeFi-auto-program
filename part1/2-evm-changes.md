@@ -318,7 +318,7 @@ When you open PoolManager.sol, follow this path to understand the flash accounti
 
 "Use transient storage when you need to share state across external calls within a single transaction. Classic examples: reentrancy guards (~40x cheaper than storage guards), flash accounting in AMMs, temporary approvals, or callback validation. Don't use it if the data needs to persist across transactions—that's what regular storage is for. And don't use it if you only need data within a single function scope—memory is cheaper at ~3 gas per access."
 
-**Red flags in interviews:**
+**Interview Red Flags:**
 
 - 🚩 "Transient storage is like memory but cheaper" — No! It's more expensive than memory (~100 vs ~3 gas)
 - 🚩 "You can use transient storage to avoid storage costs" — Only if data doesn't need to persist across transactions
@@ -330,6 +330,8 @@ When you open PoolManager.sol, follow this path to understand the flash accounti
 2. **Flash accounting**: Essential for any multi-step operation (swaps, liquidity management, flash loans)
 3. **The 2,300 gas pitfall**: TSTORE works within `transfer()`/`send()` stipend—creates new reentrancy vectors
 4. **Testing**: Foundry's `vm.transient*` cheats for testing transient storage behavior
+
+**Pro tip:** Flash accounting is THE architectural pattern to understand for DEX/AMM roles. If you can whiteboard how Uniswap V4's PoolManager tracks deltas in transient storage and enforces settlement, you'll demonstrate systems-level thinking that separates senior candidates from mid-level ones.
 
 ---
 
@@ -457,7 +459,7 @@ EIP-4844 is **infrastructure-level** (L2 sequencers use it to post data to L1), 
 
 "Not directly for application contracts. EIP-4844 is an L1 infrastructure change—the L2 sequencer uses blobs to post data to L1, but your DeFi contract on the L2 doesn't interact with blobs. The impact is **user acquisition**: cheaper transactions mean more users can afford to use your protocol. For example, a $0.02 Aave supply on Base is viable for small amounts, whereas $0.50 wasn't. Your protocol should be designed for higher volume, smaller transactions post-Dencun."
 
-**Red flags in interviews:**
+**Interview Red Flags:**
 
 - 🚩 "EIP-4844 is full Danksharding" — No! It's **proto**-Danksharding. Full danksharding will shard blob data across validators.
 - 🚩 "Blobs are stored on-chain forever" — No! Blobs are pruned after ~18 days. L2 nodes keep the data.
@@ -469,6 +471,8 @@ EIP-4844 is **infrastructure-level** (L2 sequencers use it to post data to L1), 
 2. **Blob fee spikes**: During congestion, blob fees can spike (like March 2024 inscriptions). Your L2 costs are tied to blob fee volatility.
 3. **The 18-day window**: If you're building infra (block explorers, analytics), you need to archive blob data within 18 days.
 4. **Future scaling**: EIP-4844 is step 1. Full danksharding will increase from 6 max blobs per block to potentially 64+, further reducing costs.
+
+**Pro tip:** When interviewing for L2-focused teams, frame EIP-4844 as a protocol design lever: "Post-Dencun, I'd design for higher frequency, smaller transactions because the L1 data cost bottleneck is largely gone." This shows you think about infrastructure economics, not just smart contract logic.
 
 ---
 
@@ -590,7 +594,7 @@ evm_version = "cancun"  # Enables PUSH0, MCOPY, and transient storage
 
 "No, the Solidity compiler handles these automatically when targeting the right EVM version. Trying to manually optimize at the opcode level is an anti-pattern—it makes code harder to read and maintain for minimal gain. Focus on high-level optimizations like reducing storage operations, using memory efficiently, and batching transactions. Set `evm_version = \"cancun\"` in your config and let the compiler do its job. The only time you'd write assembly with these opcodes is if you're building compiler tooling or doing very specialized low-level work."
 
-**Red flags in interviews:**
+**Interview Red Flags:**
 
 - 🚩 "I manually use PUSH0 in my code" — The compiler does this automatically
 - 🚩 "MCOPY makes all operations faster" — Only memory-to-memory copies, not storage or other operations
@@ -603,6 +607,8 @@ evm_version = "cancun"  # Enables PUSH0, MCOPY, and transient storage
 3. **Pre-Shanghai deployments**: If deploying to a chain that hasn't upgraded, use `paris` or earlier
 4. **Gas profiling**: Use `forge snapshot` to measure actual gas savings, not assumptions
 5. **The 80/20 rule**: These opcodes give ~5-10% savings. Storage optimization gives 50%+ savings. Focus on the latter.
+
+**Pro tip:** If asked about gas optimization in interviews, mention PUSH0/MCOPY as "free wins from the compiler" then pivot to the high-impact stuff: reducing SSTORE operations, batching with transient storage, minimizing cold storage reads. Teams want engineers who know where the real gas costs are.
 
 ---
 
@@ -685,7 +691,7 @@ An attacker used metamorphic contracts to:
 
 "Actually, SELFDESTRUCT behavior changed with EIP-6780 in the Dencun upgrade (March 2024). It no longer deletes contract code unless called in the same transaction as deployment. The `kill()` function will send ETH to the target address but the contract code and storage will remain. If the goal is to disable the contract, we should use a `paused` state variable instead. Using SELFDESTRUCT post-Dencun suggests the codebase hasn't been updated for recent EVM changes, which is a red flag."
 
-**Red flags in interviews/audits:**
+**Interview Red Flags:**
 
 - 🚩 Any contract using `SELFDESTRUCT` for upgradability (broken post-Dencun)
 - 🚩 Contracts that rely on `SELFDESTRUCT` freeing up storage (no longer true)
@@ -697,6 +703,8 @@ An attacker used metamorphic contracts to:
 2. **Upgradability**: Use UUPS or Transparent Proxy (Section 6), not metamorphic contracts
 3. **The one exception**: Factory contracts that deploy+test+destroy in a single transaction (rare)
 4. **Historical code**: Pre-2024 contracts may have SELFDESTRUCT—understand it won't work as originally intended
+
+**Pro tip:** Knowing the Tornado Cash metamorphic governance exploit in detail is a strong auditor signal. If you can explain the deploy → whitelist → selfdestruct → redeploy attack chain and why EIP-6780 killed it, you demonstrate both historical awareness and security mindset.
 
 ---
 
@@ -991,7 +999,7 @@ function goodExecute(Call[] calldata calls) external {
 
 "That's a security vulnerability. With EIP-7702, when an EOA delegates to a batch executor, `tx.origin` is still the EOA address even though the code executing is from the delegated contract. An attacker could trick the owner into batching malicious calls alongside legitimate ones, bypassing the `tx.origin` check. The fix is to use `msg.sender` instead of `tx.origin`, or implement a proper access control pattern like OpenZeppelin's `Ownable`. Using `tx.origin` for auth is already an antipattern, and EIP-7702 makes it actively exploitable."
 
-**Red flags in interviews/audits:**
+**Interview Red Flags:**
 
 - 🚩 **`tx.origin` for authentication** (broken by EIP-7702 delegation)
 - 🚩 **Assuming code at an address is immutable** (delegation can change behavior)
@@ -1012,6 +1020,8 @@ function goodExecute(Call[] calldata calls) external {
 **What to say:**
 
 "From the lending protocol's perspective, the call looks normal: `msg.sender` is the EOA, the protocol can check balances, approvals work as expected. But we need to be aware that the user might be batching multiple operations—for example, borrow + swap + repay in one transaction. Our reentrancy guards must work correctly, and we shouldn't assume the call is 'simple'. Also, if we emit events with `msg.sender`, they'll correctly show the EOA address, not the delegated contract. The key is that EIP-7702 is transparent to most protocols—the EOA still owns the assets, still approves tokens, still is the `msg.sender`."
+
+**Pro tip:** EIP-7702 and ERC-4337 are converging — wallets like Ambire and Rhinestone already support both paths. If you can articulate how a protocol should handle both delegated EOAs (7702) and smart accounts (4337) transparently, you show the kind of forward-thinking AA expertise teams are actively hiring for.
 
 ---
 
@@ -1158,7 +1168,7 @@ After BLS precompile:
 
 "No, that's a common misconception. Most zkSNARKs in production use BN254 (also called alt-bn128), which Ethereum already has precompiles for (EIP-196, EIP-197). BLS12-381 is optimized for signature aggregation—it lets you combine multiple signatures into one, which is why Ethereum 2.0 validators use it. Some newer zkSNARK systems do use BLS12-381, but the primary use case in Ethereum is validator signatures and threshold cryptography, not zero-knowledge proofs."
 
-**Red flags in interviews:**
+**Interview Red Flags:**
 
 - 🚩 "BLS12-381 is for zkSNARKs" — No! It's primarily for signature aggregation
 - 🚩 "All pairing-based crypto is the same" — Different curves have different security/performance tradeoffs
@@ -1171,6 +1181,8 @@ After BLS precompile:
 3. **Signature aggregation**: Combine signatures from multiple validators/oracles into one verification
 4. **The 99% rule**: BLS operations went from ~1M gas (unusable) to ~8K gas (practical)
 5. **Cross-chain messaging**: Bridges can aggregate validator signatures for cheaper verification
+
+**Pro tip:** Liquid staking is the largest DeFi sector by TVL. If you're targeting Lido, Rocket Pool, or EigenLayer roles, being able to explain how BLS signature verification enables decentralized oracle consensus shows you understand the trust assumptions that underpin the entire staking ecosystem.
 
 ---
 

@@ -77,7 +77,7 @@ Make smart contracts the primary account type, with programmable validation logi
 **What to say:**
 "ERC-4337 deploys new smart contract accounts — full flexibility but requires asset migration. EIP-7702, activated with Pectra in May 2025, lets existing EOAs temporarily delegate to smart contract code — same address, no migration. They're complementary: an EOA can use EIP-7702 to delegate to an ERC-4337-compatible implementation, getting the full bundler/paymaster ecosystem without changing addresses."
 
-**Red flags in interviews:**
+**Interview Red Flags:**
 - 🚩 "Account abstraction requires a hard fork" — ERC-4337 is entirely at the application layer
 - 🚩 Not knowing that `msg.sender == tx.origin` breaks with smart accounts
 - 🚩 Can't name the ERC-4337 components (EntryPoint, Bundler, Paymaster)
@@ -502,7 +502,7 @@ If your protocol requires EIP-712 signatures from users (e.g., for permit or off
 **What to say:**
 "I'd search for three red flags: any `msg.sender == tx.origin` checks, any `ecrecover`-only signature verification without EIP-1271 fallback, and any assumption that msg.sender can't be a contract. Then I'd verify reentrancy guards work correctly with batch operations, and check that gas refund patterns send to msg.sender, not tx.origin."
 
-**Red flags in interviews:**
+**Interview Red Flags:**
 - 🚩 Using `tx.origin` for any authentication purpose
 - 🚩 "We only support EOAs" — excludes 40M+ smart accounts
 - 🚩 Not knowing what EIP-1271 is
@@ -640,7 +640,7 @@ library UniversalSigVerifier {
 **What to say:**
 "The main risk is that `isValidSignature` is an external call to an arbitrary contract. A malicious implementation could: consume all gas (griefing), return the magic value for any input (always-valid), or have side effects. That's why you always use try/catch with a gas limit, and never trust that a valid EIP-1271 response means the signer actually authorized the action — it only means the contract says it did."
 
-**Red flags in interviews:**
+**Interview Red Flags:**
 - 🚩 Only using `ecrecover` without EIP-1271 fallback
 - 🚩 Not knowing the magic value `0x1626ba7e`
 - 🚩 Calling `isValidSignature` without try/catch
@@ -830,7 +830,7 @@ Users pre-deposit ETH or tokens into the paymaster contract. Gas is deducted fro
 **What to say:**
 "Griefing is the main risk — a malicious user could submit expensive UserOperations that the paymaster sponsors, draining its balance. Mitigations include: off-chain validation before signing (verifying paymaster), rate limiting per user, gas caps per UserOp, and requiring token pre-approval before sponsoring (ERC-20 paymaster). Also, oracle manipulation for ERC-20 paymasters — if the price feed is stale, the paymaster could underprice gas and lose money."
 
-**Red flags in interviews:**
+**Interview Red Flags:**
 - 🚩 "Just use meta-transactions" — ERC-4337 paymasters are the modern standard
 - 🚩 Not understanding the validate → execute → postOp flow
 - 🚩 Can't explain paymaster griefing risks
