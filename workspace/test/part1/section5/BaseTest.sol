@@ -26,25 +26,25 @@ abstract contract BaseTest is Test {
     // =============================================================
     //  Common Protocol Addresses (Mainnet)
     // =============================================================
-    // TODO: Define constants for commonly used addresses:
-    // - WETH: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
-    // - USDC: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-    // - USDT: 0xdAC17F958D2ee523a2206206994597C13D831ec7
-    // - DAI: 0x6B175474E89094C44Da98b954EedeAC495271d0F
-    // - PERMIT2: 0x000000000022D473030F116dDEE9F6B43aC78BA3
-    // - UNISWAP_V2_ROUTER: 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
-    // - UNISWAP_V2_FACTORY: 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
+    // TODO: Define constants for commonly used addresses
+    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+    address public constant UNISWAP_V2_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address public constant UNISWAP_V2_FACTORY = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
 
     // =============================================================
     //  Test Users
     // =============================================================
-    // TODO: Define test user addresses and private keys:
-    // address alice;
-    // uint256 aliceKey;
-    // address bob;
-    // uint256 bobKey;
-    // address charlie;
-    // uint256 charlieKey;
+    // TODO: Populate these in setUp using makeAddrAndKey
+    address public alice;
+    uint256 public aliceKey;
+    address public bob;
+    uint256 public bobKey;
+    address public charlie;
+    uint256 public charlieKey;
 
     // =============================================================
     //  TODO 2: Implement setUp
@@ -92,7 +92,9 @@ abstract contract BaseTest is Test {
     /// @notice Creates a signature for EIP-712 typed data.
     /// @param privateKey Private key to sign with
     /// @param digest Hash to sign
-    /// @return v, r, s Signature components
+    /// @return v Signature recovery id
+    /// @return r Signature r component
+    /// @return s Signature s component
     function signTypedData(uint256 privateKey, bytes32 digest)
         internal
         pure
@@ -105,7 +107,7 @@ abstract contract BaseTest is Test {
 
     /// @notice Advances block timestamp by a given duration.
     /// @param duration Time to advance (in seconds)
-    function skip(uint256 duration) internal {
+    function skip(uint256 duration) internal override {
         // TODO: Implement using vm.warp
         // vm.warp(block.timestamp + duration);
         revert("Not implemented");

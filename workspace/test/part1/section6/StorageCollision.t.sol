@@ -77,16 +77,20 @@ contract StorageCollisionTest is Test {
 
         VaultV2Wrong vaultV2Wrong = VaultV2Wrong(address(proxy));
 
-        // BUG: totalDeposits is now at wrong slot
-        // The value at slot 0 (which totalDeposits used to be) is interpreted as newOwner
-        uint256 corruptedValue = vaultV2Wrong.totalDeposits();
+        // BUG: VaultV2Wrong redefines storage layout — slot 0 is now newOwner, not totalDeposits!
+        // The old totalDeposits value (5000) gets interpreted as an address
+        uint256 corruptedDeposits = vaultV2Wrong.totalDeposits();
+        address corruptedOwner = vaultV2Wrong.newOwner();
 
-        console.log("V2Wrong totalDeposits (corrupted):", corruptedValue);
-        console.log("Expected: 5000");
+        console.log("V2Wrong totalDeposits (corrupted):", corruptedDeposits);
+        console.log("Expected: 5000, Got:", corruptedDeposits);
+        console.log("V2Wrong newOwner (corrupted - old totalDeposits as address):");
+        console.log(corruptedOwner);
 
-        // Storage collision causes data corruption
-        // The exact corruption depends on the implementation
-        // but it won't be the original 5000
+        // Storage collision causes data corruption:
+        // - totalDeposits reads slot 1 (__gap[0] from V1) → 0, not 5000
+        // - newOwner reads slot 0 (old totalDeposits) → address(5000)
+        assertNotEq(corruptedDeposits, 5000, "totalDeposits corrupted by storage collision");
     }
 
     function test_V2Wrong_RawStorageInspection() public {
@@ -182,16 +186,18 @@ contract StorageCollisionTest is Test {
         vaultV2Correct.setNewOwner(alice);
 
         // Inspect storage slots
+        // VaultV1 layout: slot 0 = totalDeposits, slots 1-49 = __gap[49]
+        // VaultV2Correct appends newOwner AFTER inherited storage → slot 50
         bytes32 slot0 = vaultV2Correct.getStorageSlot(0);
-        bytes32 slot1 = vaultV2Correct.getStorageSlot(1);
+        bytes32 slot50 = vaultV2Correct.getStorageSlot(50);
 
         console.log("Slot 0 (totalDeposits):");
         console.logBytes32(slot0);
         assertEq(uint256(slot0), 8888, "Slot 0 should be totalDeposits");
 
-        console.log("Slot 1 (newOwner):");
-        console.logBytes32(slot1);
-        assertEq(address(uint160(uint256(slot1))), alice, "Slot 1 should be newOwner");
+        console.log("Slot 50 (newOwner - after 49-slot __gap):");
+        console.logBytes32(slot50);
+        assertEq(address(uint160(uint256(slot50))), alice, "Slot 50 should be newOwner (after gap)");
     }
 
     // =========================================================
@@ -281,10 +287,10 @@ contract StorageCollisionTest is Test {
         console.log("V2Wrong totalDeposits:", v2Wrong.totalDeposits());
         console.log("V2Correct totalDeposits:", v2Correct.totalDeposits());
 
-        // V2Correct should preserve the value
+        // V2Correct should preserve the value (proper inheritance)
         assertEq(v2Correct.totalDeposits(), 12345, "V2Correct preserves data");
 
-        // V2Wrong will have corrupted data
-        // (exact value depends on implementation, but won't be 12345)
+        // V2Wrong has corrupted data (wrong storage layout)
+        assertNotEq(v2Wrong.totalDeposits(), 12345, "V2Wrong data is corrupted");
     }
 }

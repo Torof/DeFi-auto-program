@@ -13,6 +13,7 @@ contract BaseTestTest is Test {
 
     function setUp() public {
         baseTest = new TestableBaseTest();
+        baseTest.setUp();
     }
 
     // =========================================================
@@ -144,49 +145,11 @@ contract BaseTestTest is Test {
 // =============================================================
 /// @dev Wrapper to test BaseTest since it's abstract
 contract TestableBaseTest is BaseTest {
-    // Expose constants as functions for testing
-    function WETH() external pure returns (address) {
-        return BaseTest.WETH;
-    }
+    // Constants (WETH, USDC, DAI, PERMIT2) and state variables
+    // (alice, bob, charlie, aliceKey, bobKey, charlieKey) are inherited
+    // as public from BaseTest, so auto-generated getters are available.
 
-    function USDC() external pure returns (address) {
-        return BaseTest.USDC;
-    }
-
-    function DAI() external pure returns (address) {
-        return BaseTest.DAI;
-    }
-
-    function PERMIT2() external pure returns (address) {
-        return BaseTest.PERMIT2;
-    }
-
-    // Expose test users as functions
-    function alice() external view returns (address) {
-        return BaseTest.alice;
-    }
-
-    function bob() external view returns (address) {
-        return BaseTest.bob;
-    }
-
-    function charlie() external view returns (address) {
-        return BaseTest.charlie;
-    }
-
-    function aliceKey() external view returns (uint256) {
-        return BaseTest.aliceKey;
-    }
-
-    function bobKey() external view returns (uint256) {
-        return BaseTest.bobKey;
-    }
-
-    function charlieKey() external view returns (uint256) {
-        return BaseTest.charlieKey;
-    }
-
-    // Expose helper functions for testing
+    // Expose internal helper functions for testing
     function exposedDealETH(address to, uint256 amount) external {
         dealETH(to, amount);
     }

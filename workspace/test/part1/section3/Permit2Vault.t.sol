@@ -30,13 +30,14 @@ contract Permit2VaultTest is Test {
     address alice;
     uint256 alicePrivateKey;
 
-    address usdcWhale; // Address with lots of USDC
+    // Pinned block for reproducible fork tests (Jan 2024, well after Permit2 deployment)
+    uint256 constant FORK_BLOCK = 19_000_000;
 
     function setUp() public {
-        // Fork mainnet
-        // Note: This test requires MAINNET_RPC_URL environment variable
+        // Fork mainnet at a pinned block for deterministic results
+        // Set MAINNET_RPC_URL in your environment (e.g. from Alchemy, Infura, or a local node)
         string memory rpcUrl = vm.envOr("MAINNET_RPC_URL", string("https://eth-mainnet.g.alchemy.com/v2/demo"));
-        vm.createSelectFork(rpcUrl);
+        vm.createSelectFork(rpcUrl, FORK_BLOCK);
 
         // Get deployed Permit2 contract
         permit2 = IPermit2(PERMIT2_ADDRESS);
@@ -51,14 +52,10 @@ contract Permit2VaultTest is Test {
         // Get USDC instance
         usdc = IERC20(USDC);
 
-        // Find a USDC whale and transfer tokens to alice for testing
-        // Using a known large USDC holder
-        usdcWhale = 0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503; // Binance wallet
-
+        // Use Foundry's deal cheatcode to set USDC balance directly
+        // (avoids depending on a whale address that may change over time)
         uint256 testAmount = 10_000 * 1e6; // 10,000 USDC (6 decimals)
-
-        vm.prank(usdcWhale);
-        usdc.transfer(alice, testAmount);
+        deal(address(usdc), alice, testAmount);
 
         // Alice approves Permit2 (one-time approval for all future permits)
         vm.prank(alice);
@@ -319,14 +316,17 @@ contract Permit2VaultTest is Test {
         uint256 deadline,
         uint256 depositId
     ) internal view returns (bytes memory) {
-        string memory witnessTypeString = "Deposit(uint256 depositId)";
+        // witnessTypeString completes Permit2's STUB:
+        // STUB = "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,"
+        // Full EIP-712 type = STUB + witnessTypeString
+        // Format: "<WitnessType> <fieldName>)<WitnessTypeDef><TokenPermissionsTypeDef>"
+        string memory witnessTypeString = "Deposit witness)Deposit(uint256 depositId)TokenPermissions(address token,uint256 amount)";
         bytes32 witness = keccak256(abi.encode(keccak256("Deposit(uint256 depositId)"), depositId));
 
         bytes32 PERMIT_WITNESS_TRANSFER_FROM_TYPEHASH = keccak256(
             abi.encodePacked(
                 "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,",
-                witnessTypeString,
-                ")TokenPermissions(address token,uint256 amount)"
+                witnessTypeString
             )
         );
         bytes32 TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");

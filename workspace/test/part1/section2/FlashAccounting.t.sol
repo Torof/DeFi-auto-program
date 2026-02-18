@@ -64,7 +64,7 @@ contract FlashAccountingTest is Test {
         accounting.accountDelta(alice, TOKEN_A, 100);
     }
 
-    function test_TransientStorageWipedAfterTransaction() public {
+    function test_TransientStoragePersistsWithinTransaction() public {
         // Lock and record a delta
         accounting.lock();
         accounting.accountDelta(alice, TOKEN_A, 1000);
@@ -74,10 +74,15 @@ contract FlashAccountingTest is Test {
 
         accounting.unlock();
 
-        // In a NEW transaction (simulated by fresh lock), delta should be gone
+        // Within the SAME transaction, transient storage persists across
+        // lock/unlock cycles. EIP-1153 only clears transient storage at
+        // transaction boundaries — not on lock/unlock.
+        // In production, each user transaction is separate, so deltas
+        // ARE wiped between sessions. Foundry test functions run as a
+        // single transaction, so we verify persistence here.
         accounting.lock();
-        int256 newDelta = accounting.getDelta(alice, TOKEN_A);
-        assertEq(newDelta, 0, "Delta should be wiped in new transaction");
+        int256 persistedDelta = accounting.getDelta(alice, TOKEN_A);
+        assertEq(persistedDelta, 1000, "Delta persists within same transaction");
         accounting.unlock();
     }
 

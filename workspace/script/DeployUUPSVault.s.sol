@@ -17,7 +17,7 @@ pragma solidity ^0.8.19;
 // ============================================================================
 
 import "forge-std/Script.sol";
-import {VaultV1} from "../src/part1/section6/UUPSVault.sol";
+import {VaultV1, VaultV2} from "../src/part1/section6/UUPSVault.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -96,7 +96,7 @@ contract DeployUUPSVault is Script {
         address proxyAddress,
         address expectedToken,
         address expectedOwner
-    ) internal view {
+    ) public view {
         // TODO: Implement
         // 1. Create vault interface: VaultV1 vault = VaultV1(proxyAddress);
         // 2. Verify token: require(address(vault.token()) == expectedToken, "Token mismatch");
@@ -159,9 +159,8 @@ contract DeployUUPSVault is Script {
     /// @notice Upgrades the vault to V2.
     /// @param proxyAddress Address of the proxy to upgrade
     function upgradeToV2(address proxyAddress) external {
-        // TODO: Implement
-        // 1. Import VaultV2: import {VaultV2} from "../src/part1/section6/UUPSVault.sol";
-        // 2. Load owner key: uint256 ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
+        // TODO: Implement (VaultV2 is already imported at the top of this file)
+        // 1. Load owner key: uint256 ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
         // 3. Start broadcast:
         //    vm.startBroadcast(ownerKey);
         // 4. Deploy V2 implementation:

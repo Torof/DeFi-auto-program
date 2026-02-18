@@ -159,8 +159,11 @@ contract Permit2Vault {
     ) external {
         // TODO: Implement
         // 1. Build PermitTransferFrom and SignatureTransferDetails structs
-        // 2. Compute witness hash: keccak256(abi.encode(depositId))
-        // 3. Define witnessTypeString: "Deposit(uint256 depositId)"
+        // 2. Compute witness hash (EIP-712 hashStruct):
+        //    keccak256(abi.encode(keccak256("Deposit(uint256 depositId)"), depositId))
+        // 3. Define witnessTypeString (completes Permit2's type stub):
+        //    "Deposit witness)Deposit(uint256 depositId)TokenPermissions(address token,uint256 amount)"
+        //    Format: "<WitnessType> <fieldName>)<WitnessTypeDef><TokenPermissionsTypeDef>"
         // 4. Call permit2.permitWitnessTransferFrom(
         //      permit, transferDetails, msg.sender, witness, witnessTypeString, signature
         //    )

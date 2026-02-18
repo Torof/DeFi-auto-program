@@ -792,6 +792,28 @@ function setUp() public {
 }
 ```
 
+**⚠️ Running these tests — mainnet fork required:**
+
+This exercise forks Ethereum mainnet to interact with the real, deployed Permit2 contract. You need an RPC endpoint:
+
+```bash
+# 1. Get a free RPC URL from one of these providers:
+#    - Alchemy:  https://www.alchemy.com/  (free tier: 300M compute units/month)
+#    - Infura:   https://www.infura.io/    (free tier: 100k requests/day)
+#    - Ankr:     https://www.ankr.com/     (free public endpoint, slower)
+
+# 2. Set it as an environment variable:
+export MAINNET_RPC_URL="https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY"
+
+# 3. Run the tests:
+forge test --match-contract Permit2VaultTest --fork-url $MAINNET_RPC_URL -vvv
+
+# Tip: Add the export to your .bashrc / .zshrc so you don't have to set it every session.
+# You'll need this for many exercises later (Part 2 onwards) that fork mainnet.
+```
+
+The tests pin a specific block number (`19_000_000`) so results are deterministic — the first run downloads and caches that block's state, subsequent runs are fast.
+
 6. **Gas comparison:**
    - Measure gas for: traditional approve → deposit (2 txs)
    - vs: deposit with SignatureTransfer (1 tx, signature off-chain)

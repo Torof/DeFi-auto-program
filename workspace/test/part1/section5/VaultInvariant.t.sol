@@ -139,28 +139,20 @@ contract VaultInvariantTest is Test {
     }
 
     /// @notice INVARIANT: No free money - ghost variables should be consistent.
-    /// @dev This uses the handler's ghost variables to track deposits vs withdrawals.
+    /// @dev Uses conservation of value: total value out <= total value in.
+    ///      Value in = deposits + yield. Value out = withdrawals + current vault balance.
+    ///      Rounding losses mean value out may be slightly less than value in.
     function invariant_noFreeMoney() public view {
-        // Total withdrawn should never exceed total deposited (ignoring yield)
-        // Note: This invariant might be violated if addYield is called,
-        // so we need to account for vault balance vs deposits
-        uint256 netDeposited = handler.ghost_depositSum();
+        uint256 totalValueIn = handler.ghost_depositSum() + handler.ghost_yieldSum();
+        uint256 totalValueOut = handler.ghost_withdrawSum() + vault.totalAssets();
 
-        if (handler.ghost_withdrawSum() > 0) {
-            // If withdrawals happened, they should not exceed deposits + any yield
-            uint256 currentAssets = vault.totalAssets();
-            uint256 totalWithdrawn = handler.ghost_withdrawSum();
-
-            // Total value (current assets + withdrawn) should match deposits + yield
-            // Since we track deposits, the withdrawn amount should be <= deposits initially
-            // But yield can increase this, so we just check no value was created from nothing:
-            // totalWithdrawn should be <= netDeposited + currentAssets
-            assertLe(
-                totalWithdrawn,
-                netDeposited + currentAssets,
-                "Invariant violated: more withdrawn than deposited + current assets"
-            );
-        }
+        // Total value out should never exceed total value in
+        // (any difference is rounding losses from integer division in share math)
+        assertLe(
+            totalValueOut,
+            totalValueIn,
+            "Invariant violated: value created from nothing"
+        );
     }
 
     // =============================================================

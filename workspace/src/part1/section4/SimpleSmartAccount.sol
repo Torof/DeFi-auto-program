@@ -212,8 +212,14 @@ contract MockEntryPoint {
             // Get the account
             IAccount account = IAccount(op.sender);
 
-            // Compute userOpHash
-            bytes32 userOpHash = keccak256(abi.encode(op));
+            // Compute userOpHash (excludes signature to avoid circular dependency,
+            // matching real ERC-4337 behavior)
+            bytes32 userOpHash = keccak256(abi.encode(
+                op.sender, op.nonce, op.initCode, op.callData,
+                op.callGasLimit, op.verificationGasLimit, op.preVerificationGas,
+                op.maxFeePerGas, op.maxPriorityFeePerGas, op.paymasterAndData,
+                bytes("")
+            ));
 
             // Validation phase: call validateUserOp
             uint256 validationData = account.validateUserOp(op, userOpHash, 0);

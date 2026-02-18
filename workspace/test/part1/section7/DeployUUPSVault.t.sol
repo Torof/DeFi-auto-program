@@ -54,17 +54,6 @@ contract DeployUUPSVaultTest is Test {
         // For now, we verify the script doesn't revert
     }
 
-    function test_Deploy_SetsCorrectOwner() public {
-        // This test would verify that after deployment,
-        // the vault has the correct owner
-        // Implementation depends on how you capture deployment addresses
-    }
-
-    function test_Deploy_InitializesCorrectly() public {
-        // This test would verify that the vault is properly initialized
-        // with the correct token address
-    }
-
     // =========================================================
     //  Ownership Transfer Tests
     // =========================================================
@@ -140,6 +129,8 @@ contract DeployUUPSVaultTest is Test {
 
     function test_UpgradeToV2_StoragePersists() public {
         // Deploy V1 and add some state
+        token.mint(deployer, 10000);
+
         vm.startPrank(deployer);
         VaultV1 implementation = new VaultV1();
         bytes memory initData = abi.encodeWithSelector(
@@ -150,6 +141,7 @@ contract DeployUUPSVaultTest is Test {
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
 
         VaultV1 vault = VaultV1(address(proxy));
+        token.approve(address(proxy), 1000);
         vault.deposit(1000);
         vm.stopPrank();
 
@@ -162,18 +154,6 @@ contract DeployUUPSVaultTest is Test {
         // Verify storage persisted
         VaultV2 vaultV2 = VaultV2(address(proxy));
         assertEq(vaultV2.totalDeposits(), depositsBefore, "Deposits should persist");
-    }
-
-    // =========================================================
-    //  Multi-Network Deployment Tests
-    // =========================================================
-
-    function test_MultiNetwork_DeployToCorrectNetwork() public {
-        DeployMultiNetwork multiDeploy = new DeployMultiNetwork();
-
-        // The deployment should use the config for the current chainid
-        // This test verifies the script handles network-specific configs
-        // Implementation depends on how configs are stored
     }
 
     // =========================================================

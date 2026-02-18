@@ -95,12 +95,11 @@ contract BeaconProxy {
     /// @param beacon Address of the UpgradeableBeacon
     /// @param data Initialization data to call on implementation
     constructor(address beacon, bytes memory data) {
-        // TODO: Implement
+        // TODO: Implement the remaining steps
         // 1. Validate beacon != address(0)
-        // 2. Set _beacon = beacon
-        // 3. If data is not empty, delegatecall to implementation with data
+        // 2. If data is not empty, delegatecall to implementation with data
         //    (this initializes the proxy storage)
-        revert("Not implemented");
+        _beacon = beacon;
     }
 
     // =============================================================
@@ -196,7 +195,7 @@ contract TokenVaultV1 is Initializable, OwnableUpgradeable {
     //  TODO 12: Implement withdraw
     // =============================================================
     /// @notice Withdraws from the vault.
-    function withdraw(uint256 amount) external {
+    function withdraw(uint256 amount) external virtual {
         // TODO: Implement
         // 1. Validate amount > 0
         // 2. Validate balances[msg.sender] >= amount

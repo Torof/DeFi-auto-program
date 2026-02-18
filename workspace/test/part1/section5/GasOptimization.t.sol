@@ -80,7 +80,7 @@ contract GasOptimizationTest is Test {
     //  Pattern 3: Calldata vs Memory
     // =============================================================
 
-    function test_CalldataUnoptimized() public view {
+    function test_CalldataUnoptimized() public {
         CalldataUnoptimized c = new CalldataUnoptimized();
         uint256[] memory data = new uint256[](100);
         for (uint256 i = 0; i < 100; i++) {
@@ -91,7 +91,7 @@ contract GasOptimizationTest is Test {
         assertEq(sum, 4950); // Sum of 0..99
     }
 
-    function test_CalldataOptimized() public view {
+    function test_CalldataOptimized() public {
         CalldataOptimized c = new CalldataOptimized();
         uint256[] memory data = new uint256[](100);
         for (uint256 i = 0; i < 100; i++) {
@@ -136,7 +136,7 @@ contract GasOptimizationTest is Test {
     //  Pattern 5: Unchecked Arithmetic
     // =============================================================
 
-    function test_ArithmeticUnoptimized() public view {
+    function test_ArithmeticUnoptimized() public {
         ArithmeticUnoptimized a = new ArithmeticUnoptimized();
         uint256 sum = a.calculateSum(100, 200, 300);
         assertEq(sum, 600);
@@ -145,7 +145,7 @@ contract GasOptimizationTest is Test {
         assertEq(result, 9);
     }
 
-    function test_ArithmeticOptimized() public view {
+    function test_ArithmeticOptimized() public {
         ArithmeticOptimized a = new ArithmeticOptimized();
         uint256 sum = a.calculateSum(100, 200, 300);
         assertEq(sum, 600);

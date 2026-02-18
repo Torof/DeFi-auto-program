@@ -35,7 +35,9 @@ contract VulnerableVault is Initializable, OwnableUpgradeable {
     /// @param _owner Address to set as owner
     function initialize(address _owner) public {
         // TODO: Implement WITHOUT the 'initializer' modifier
-        // 1. Call __Ownable_init(_owner);
+        // 1. Call _transferOwnership(_owner)
+        //    (Cannot use __Ownable_init — it has 'onlyInitializing' in OZ v5,
+        //     so it reverts outside an 'initializer' context)
         // 2. Emit Initialized event
         //
         // BUG: Missing 'initializer' modifier means anyone can call this

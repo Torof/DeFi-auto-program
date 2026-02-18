@@ -43,10 +43,8 @@ contract VaultV1 is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        // TODO: Implement
         // Disable initializers in the implementation contract
-        // _disableInitializers();
-        revert("Not implemented");
+        _disableInitializers();
     }
 
     // =============================================================
@@ -85,7 +83,7 @@ contract VaultV1 is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     // =============================================================
     /// @notice Withdraws tokens from the vault.
     /// @param amount Amount to withdraw
-    function withdraw(uint256 amount) external {
+    function withdraw(uint256 amount) external virtual {
         // TODO: Implement
         // 1. Validate amount > 0
         // 2. Validate user has sufficient balance: balances[msg.sender] >= amount

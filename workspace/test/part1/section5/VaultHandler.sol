@@ -31,6 +31,7 @@ contract VaultHandler is Test {
     uint256 public ghost_depositSum;
     uint256 public ghost_withdrawSum;
     uint256 public ghost_sharesSum;
+    uint256 public ghost_yieldSum;
 
     // Actor management
     address[] public actors;
@@ -67,8 +68,8 @@ contract VaultHandler is Test {
     /// @param assets Amount to deposit
     function deposit(uint256 actorSeed, uint256 assets) external useActor(actorSeed) {
         // TODO: Implement
-        // 1. Bound assets to valid range:
-        //    assets = bound(assets, 0, token.balanceOf(msg.sender))
+        // 1. Bound assets to valid range (use `actor` from the modifier, NOT msg.sender):
+        //    assets = bound(assets, 0, token.balanceOf(actor))
         //    Note: Allow 0 to test edge case, vault should revert
         // 2. If assets == 0, return early (vault will revert)
         // 3. Approve vault to spend tokens
@@ -88,8 +89,8 @@ contract VaultHandler is Test {
     /// @param shares Amount of shares to withdraw
     function withdraw(uint256 actorSeed, uint256 shares) external useActor(actorSeed) {
         // TODO: Implement
-        // 1. Bound shares to valid range:
-        //    shares = bound(shares, 0, vault.balanceOf(msg.sender))
+        // 1. Bound shares to valid range (use `actor` from the modifier, NOT msg.sender):
+        //    shares = bound(shares, 0, vault.balanceOf(actor))
         // 2. If shares == 0, return early
         // 3. Try to withdraw:
         //    try vault.withdraw(shares) returns (uint256 assets) {
@@ -109,6 +110,7 @@ contract VaultHandler is Test {
         // 1. Bound amount: amount = bound(amount, 0, 1000e18)
         // 2. If amount == 0, return
         // 3. Deal tokens to vault: deal(address(token), address(vault), token.balanceOf(address(vault)) + amount)
+        // 4. Track yield: ghost_yieldSum += amount
         // Note: This simulates external yield generation
         revert("Not implemented");
     }

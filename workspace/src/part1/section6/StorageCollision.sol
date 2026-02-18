@@ -65,21 +65,32 @@ contract VaultV1 is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 }
 
 // =============================================================
-//  TODO 4: Implement VaultV2Wrong (WRONG - Storage Collision)
+//  TODO 4: Observe VaultV2Wrong (WRONG - Storage Collision)
 // =============================================================
-/// @notice V2 WRONG: Inserts owner before totalDeposits, causing collision.
-/// @dev Storage: slot 0 = owner (COLLISION!), slot 1 = totalDeposits
-contract VaultV2Wrong is VaultV1 {
-    // BUG: Inserting a new variable BEFORE existing ones
-    // This shifts all subsequent storage slots!
+/// @notice V2 WRONG: Redefines storage layout instead of inheriting V1.
+/// @dev This simulates a common production mistake: deploying a new implementation
+///      that doesn't preserve the original storage layout.
+///      V1 had: slot 0 = totalDeposits.
+///      V2Wrong has: slot 0 = newOwner → COLLISION! The old totalDeposits value
+///      (e.g., 5000) gets interpreted as an address.
+///
+/// NOTE: This contract does NOT inherit VaultV1 — that's the bug.
+///       In a real upgrade, the new implementation MUST preserve the storage
+///       layout of the previous version (use inheritance or be very careful).
+contract VaultV2Wrong is Initializable, UUPSUpgradeable, OwnableUpgradeable {
+    // BUG: Storage layout doesn't match V1!
+    // V1 had:      slot 0 = totalDeposits (uint256)
+    // V2Wrong has: slot 0 = newOwner (address) ← COLLISION!
 
     // =============================================================
-    //  TODO 5: Add owner variable BEFORE totalDeposits (wrong!)
+    //  TODO 5: Observe the wrong storage layout
     // =============================================================
-    // TODO: Uncomment this to create the storage collision:
-    // address public newOwner;  // This will occupy slot 0, pushing totalDeposits to slot 1!
+    // This contract redefines storage from scratch instead of inheriting V1.
+    // newOwner now occupies slot 0, where totalDeposits used to be!
+    address public newOwner;      // Slot 0 — COLLISION with V1's totalDeposits!
+    uint256 public totalDeposits; // Slot 1 — reads old __gap[0], which is 0
 
-    // Note: VaultV1.totalDeposits is inherited but now at wrong slot
+    uint256[48] private __gap;
 
     // =============================================================
     //  TODO 6: Implement getStorageSlotValues helper
@@ -95,7 +106,9 @@ contract VaultV2Wrong is VaultV1 {
         revert("Not implemented");
     }
 
-    function version() public pure override returns (uint256) {
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    function version() public pure returns (uint256) {
         return 2;
     }
 }
@@ -103,8 +116,8 @@ contract VaultV2Wrong is VaultV1 {
 // =============================================================
 //  TODO 7: Implement VaultV2Correct (CORRECT - Append Only)
 // =============================================================
-/// @notice V2 CORRECT: Appends new variables after existing ones.
-/// @dev Storage: slot 0 = totalDeposits (same), slot 1 = newOwner (appended)
+/// @notice V2 CORRECT: Inherits V1 and appends new variables after existing ones.
+/// @dev Storage: slot 0 = totalDeposits (same), slot 50 = newOwner (after 49-slot __gap)
 contract VaultV2Correct is VaultV1 {
     // CORRECT: New variables appended after all inherited storage
 
@@ -112,7 +125,7 @@ contract VaultV2Correct is VaultV1 {
     //  TODO 8: Add owner variable AFTER totalDeposits (correct!)
     // =============================================================
     // TODO: Implement
-    // address public newOwner;  // This occupies a new slot after VaultV1's storage
+    address public newOwner;  // This occupies a new slot after VaultV1's storage
 
     // Reduce gap by 1 (we added 1 variable)
     // uint256[48] private __gapV2;
@@ -163,7 +176,6 @@ contract VaultWithGap is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     function initialize(address _owner) public initializer {
         __Ownable_init(_owner);
-        __UUPSUpgradeable_init();
     }
 
     function deposit(uint256 amount) external {
@@ -183,8 +195,8 @@ contract VaultWithGapV2 is VaultWithGap {
     //  TODO 13: Add new variables
     // =============================================================
     // TODO: Add new state variables
-    // address public feeCollector;
-    // uint256 public feeBps;
+    address public feeCollector;
+    uint256 public feeBps;
 
     // =============================================================
     //  TODO 14: Reduce gap size
