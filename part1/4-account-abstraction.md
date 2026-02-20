@@ -872,6 +872,34 @@ postOp(mode, context, actualGasCost, actualUserOpFeePerGas)
 - [Pimlico's verifying paymaster](https://docs.pimlico.io/how-to/paymaster/verifying-paymaster)
 - [Alchemy's gas manager](https://docs.alchemy.com/docs/gas-manager-services)
 
+**📖 How to Study Paymaster Implementations:**
+
+1. **Start with `BasePaymaster.sol`** — the abstract base
+   - Two functions to understand: `validatePaymasterUserOp` and `postOp`
+   - The `context` bytes are the bridge between them — data from validation flows to post-execution
+   - Notice: `postOp` is called even on execution revert (the paymaster still gets to charge)
+
+2. **Read `VerifyingPaymaster.sol`** — the simpler implementation
+   - Focus on: how `paymasterAndData` is unpacked (paymaster address + custom data)
+   - The validation logic: extract signature, verify against trusted signer
+   - Notice: no `postOp` override — the simplest paymaster doesn't need post-execution logic
+
+3. **Read `TokenPaymaster.sol`** — the complex implementation
+   - Follow the flow: validate → estimate token cost → store in context → execute → postOp charges actual cost
+   - The oracle integration: how does it get the ETH/token exchange rate?
+   - The refund mechanism: estimated cost vs actual cost, refund difference
+
+4. **Compare with production paymasters** — Pimlico and Alchemy
+   - These add: rate limiting, gas caps, off-chain pre-validation
+   - Notice what's missing from the reference implementations (griefing protection, fee margins)
+   - This gap between reference and production is where security bugs hide
+
+5. **Trace one complete sponsored transaction**
+   - UserOp submitted → Bundler validates → EntryPoint calls `validatePaymasterUserOp` → execution → EntryPoint calls `postOp` → gas reimbursement
+   - Key question at each step: who pays, and how much?
+
+**Don't get stuck on:** The `PostOpMode` enum details initially. Just know that `opSucceeded` = everything worked, `opReverted` = user's call failed but paymaster still charges, `postOpReverted` = rare edge case.
+
 ---
 
 <a id="day10-exercise"></a>

@@ -903,6 +903,41 @@ function good() public view returns (uint256) {
 
 > 🔍 **Deep dive:** [Rareskills Gas Optimization Guide](https://www.rareskills.io/post/gas-optimization) is the comprehensive resource. [Alchemy - 12 Solidity Gas Optimization Techniques](https://www.alchemy.com/overviews/solidity-gas-optimization) provides a practical checklist. [Cyfrin - Advanced Gas Optimization Tips](https://www.cyfrin.io/blog/solidity-gas-optimization-tips) covers advanced techniques. [0xMacro - Gas Optimizations Cheat Sheet](https://0xmacro.com/blog/solidity-gas-optimizations-cheat-sheet/) is a quick reference.
 
+#### 📖 How to Study Gas Optimization in Production Code
+
+When you encounter a gas-optimized DeFi contract and want to understand the optimizations:
+
+1. **Run `forge test --gas-report` first** — establish a baseline
+   - Look at the `avg` column — that's what matters for real users
+   - `min` and `max` show edge cases (empty pools vs full pools)
+   - Sort mentally by "which function is called most" × "gas cost"
+
+2. **Identify the expensive operations** — run with `-vvvv` (4 v's)
+   - Traces show gas cost per opcode
+   - Look for: `SLOAD` (~2,100 cold), `SSTORE` (~5,000-20,000), `CALL` (~2,600 cold)
+   - These three dominate gas costs in DeFi — everything else is noise
+
+3. **Read the code looking for storage patterns**
+   - Count how many times each storage variable is read per function
+   - Look for: caching into local variables, packed structs, transient storage usage
+   - Compare with the unoptimized version if available (tests often have both)
+
+4. **Use `forge snapshot` for before/after comparison**
+   ```bash
+   forge snapshot                    # Baseline
+   # ... make changes ...
+   forge snapshot --diff             # Shows delta
+   ```
+   - Any function that got MORE expensive → investigate (likely a regression)
+   - Focus on functions called in hot paths (swaps, transfers, not admin functions)
+
+5. **Study the protocol's gas benchmarks**
+   - Many protocols maintain `.gas-snapshot` files in their repos
+   - Example: [Uniswap V4's gas snapshots](https://github.com/Uniswap/v4-core/blob/main/.forge-snapshots/) track gas per operation
+   - These tell you what the team considers "acceptable" gas costs
+
+**Don't get stuck on:** Micro-optimizations like `unchecked ++i` vs `i++` (~20 gas). Focus on storage access patterns — a single eliminated `SLOAD` saves more gas than 100 unchecked increments.
+
 ---
 
 <a id="foundry-scripts"></a>

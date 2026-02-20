@@ -218,12 +218,28 @@ Most modern tokens implement EIP-2612:
 
 **Source:** [`@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC20Permit.sol)
 
-Study how it extends ERC20 with:
-- `EIP712` base contract for domain separator computation
-- `Nonces` contract for replay protection
-- The `permit()` function that calls `_approve` after signature verification
+**📖 How to Study ERC20Permit:**
 
-Pay attention to the EIP-712 domain separator construction—you'll need to understand this for Permit2.
+1. **Start with `EIP712.sol`** — the domain separator base contract
+   - Find where `_domainSeparatorV4()` is computed
+   - Trace how `chainId` and `address(this)` get baked in
+   - This is the security anchor — understand it before `permit()`
+
+2. **Read `Nonces.sol`** — replay protection
+   - Simple: a `mapping(address => uint256)` that increments
+   - Note: sequential nonces (0, 1, 2...) — contrast with Permit2's bitmap nonces later
+
+3. **Read `ERC20Permit.permit()`** — the core function
+   - Follow the flow: build struct hash → build digest → `ecrecover` → `_approve`
+   - Map each line to the EIP-712 visual diagram above
+   - Notice: the function is ~10 lines. The complexity is in the standard, not the code
+
+4. **Compare with DAI's permit** — the non-standard variant
+   - DAI uses `allowed` (bool) instead of `value` (uint256)
+   - Different function signature = different selector
+   - This is why production code needs to handle both
+
+**Don't get stuck on:** The `_useNonce` internal function — it's just `return nonces[owner]++`. Focus on understanding the full digest construction flow.
 
 > 🔍 **Deep dive:** Read [EIP-712](https://eips.ethereum.org/EIPS/eip-712) to understand how typed data signing prevents phishing (compared to raw `personal_sign`). The domain separator binds signatures to specific contracts on specific chains. [QuickNode - EIP-2612 Permit Guide](https://www.quicknode.com/guides/ethereum-development/transactions/how-to-use-erc20-permit-approval) provides a hands-on tutorial. [Cyfrin Updraft - EIP-712](https://updraft.cyfrin.io/courses/security/bridges/eip-712) covers typed structured data hashing with security examples.
 
@@ -1006,9 +1022,27 @@ An attacker can call Permit2's `invalidateNonces` on behalf of any user to revok
 
 **Source:** [`SafeERC20.sol`](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/utils/SafeERC20.sol)
 
-Look at `forceApprove` and how they handle tokens with non-standard approval behavior (some tokens revert on approve if allowance is non-zero).
+**📖 How to Study SafeERC20.sol:**
 
-Also examine how they recommend handling permit failures (try/catch, because a front-run permit execution will cause your permit call to revert).
+1. **Start with `safeTransfer` / `safeTransferFrom`** — the simpler functions
+   - See how they wrap low-level `.call()` and check both success AND return data
+   - This handles tokens that don't return `bool` (like USDT on mainnet)
+
+2. **Read `forceApprove`** — the non-obvious function
+   - Some tokens (USDT) revert if you `approve` when allowance is already non-zero
+   - `forceApprove` handles this: tries `approve(0)` first, then `approve(amount)`
+   - This is a real production gotcha you'll encounter
+
+3. **Study the permit try/catch pattern** — the security-critical function
+   - Look for how they handle permit failure as a non-fatal event
+   - The key insight: if permit fails (front-run, already used), check if allowance is already sufficient
+   - This is the defensive pattern every DeFi protocol should use
+
+4. **Trace one complete flow** — deposit with permit
+   - User signs permit → protocol calls `safePermit()` → if fails, fallback to existing allowance → `safeTransferFrom()`
+   - Draw this as a flowchart with the success and failure paths
+
+**Don't get stuck on:** The assembly in `_callOptionalReturn` — it's handling tokens with non-standard return values. Understand the concept (some tokens don't return bool) and move on.
 
 **Pattern:**
 ```solidity
