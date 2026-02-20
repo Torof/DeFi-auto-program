@@ -125,7 +125,7 @@ If `a * b < 2^512` (virtually always true) AND `c != 0`, the result fits in uint
 - Fixed-point math libraries (Ray/Wad math in Aave, DSMath in MakerDAO)
 
 **How to read the code:**
-1. Start with the tests in Uniswap's repo - see inputs/outputs
+1. Start with the [tests in Uniswap's repo](https://github.com/Uniswap/v3-core/blob/main/test/FullMath.spec.ts) - see inputs/outputs, then read the [FullMath implementation](https://github.com/Uniswap/v3-core/blob/main/contracts/libraries/FullMath.sol)
 2. Ignore the bit manipulation at first - focus on "why" not "how"
 3. The core insight: multiply first (in 512 bits), divide second (back to 256)
 4. Production code adds optimizations (assembly) - understand the concept first
