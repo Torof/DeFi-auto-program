@@ -94,6 +94,20 @@ Focus on:
 
 Also compare with Solmate's implementation (`solmate/src/tokens/ERC4626.sol`) which is more gas-efficient but less defensive.
 
+#### 📖 How to Study OpenZeppelin ERC4626.sol
+
+1. **Read the conversion functions first** — `_convertToShares()` and `_convertToAssets()` are the mathematical core. Notice the `+ 10 ** _decimalsOffset()` and `+ 1` terms — these are the virtual shares/assets that defend against the inflation attack. Understand why rounding direction differs between deposit (rounds down = fewer shares for user) and withdraw (rounds up = more shares burned from user).
+
+2. **Trace a `deposit()` call end-to-end** — Follow: `deposit()` → `previewDeposit()` → `_convertToShares()` → `_deposit()` → `SafeERC20.safeTransferFrom()` + `_mint()`. Map which function handles the math vs the token movement vs the event emission.
+
+3. **Compare `deposit()` vs `mint()`** — Both result in shares being minted, but they specify different inputs. `deposit(assets)` says "I want to deposit exactly X assets, give me however many shares." `mint(shares)` says "I want exactly X shares, pull however many assets needed." The rounding direction flips between them. Draw a table showing the rounding for all four operations (deposit, mint, withdraw, redeem).
+
+4. **Read `maxDeposit()`, `maxMint()`, `maxWithdraw()`, `maxRedeem()`** — These are often overlooked but critical for integration. A vault that returns `0` for `maxDeposit` signals it's paused or full. Protocols integrating your vault MUST check these before attempting operations.
+
+5. **Compare with Solmate's ERC4626** — [Solmate's version](https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC4626.sol) skips virtual shares (no `_decimalsOffset`). This is more gas-efficient but vulnerable to the inflation attack without additional protection. Understanding this trade-off is interview-relevant.
+
+**Don't get stuck on:** The `_decimalsOffset()` virtual function mechanics. Just know: default is 0 (no virtual offset), override to 3 or 6 for inflation protection. The higher the offset, the more expensive the attack becomes, but the more precision you lose for tiny deposits.
+
 ### Exercise
 
 **Exercise 1:** Implement a minimal ERC-4626 vault from scratch (don't use OpenZeppelin or Solmate). Use `Math.mulDiv` for safe division. Implement all required functions. Test:
@@ -272,6 +286,20 @@ Each layer uses ERC-4626, so they compose naturally.
 - The `BaseStrategy` abstract contract — the three functions you override
 - How `report()` triggers `_harvestAndReport()` and handles accounting
 
+#### 📖 How to Study Yearn V3 Architecture
+
+1. **Start with a strategy, not the vault** — Read a simple strategy implementation first (Yearn publishes example strategies). Find the three overrides: `_deployFunds()`, `_freeFunds()`, `_harvestAndReport()`. These are typically 10-30 lines each. Understanding what a strategy does grounds the rest of the architecture.
+
+2. **Read the TokenizedStrategy delegation pattern** — Your strategy contract doesn't implement ERC-4626 directly. It delegates to a pre-deployed `TokenizedStrategy` implementation via `delegateCall` in the fallback function. This means all the accounting, reporting, and ERC-4626 compliance lives in one shared contract. Focus on: how does `report()` call your `_harvestAndReport()` and then update the strategy's total assets?
+
+3. **Read VaultV3's `process_report()`** — This is the core allocator vault function. Trace: how it calls `strategy.convertToAssets()` to get current value, compares to `currentDebt` to compute profit/loss, charges fees via the Accountant, and handles profit unlocking. The `profitMaxUnlockTime` mechanism is the key anti-sandwich defense.
+
+4. **Study the withdrawal queue** — When a user withdraws from the allocator vault and idle balance is insufficient, the vault pulls from strategies in queue order. Read how `_withdraw()` iterates through strategies, calls `strategy.withdraw()`, and handles partial fills. This is where withdrawal liquidity risk manifests.
+
+5. **Map the role system** — Yearn V3 uses granular roles: `ROLE_MANAGER`, `DEBT_MANAGER`, `REPORTING_MANAGER`, etc. Understanding who can call what clarifies the trust model: vault managers control allocation, reporting managers trigger harvests, and the role manager controls access.
+
+**Don't get stuck on:** The Vyper syntax in VaultV3 (Yearn V3 vaults are written in Vyper, not Solidity). The logic maps directly to Solidity concepts — `@external` = `external`, `@view` = `view`, `self.variable` = `this.variable`. Focus on the architecture, not the syntax.
+
 ### Exercise
 
 **Exercise:** Build a simplified allocator vault:
@@ -405,25 +433,25 @@ This composability is why ERC-4626 adoption has been so rapid — each new vault
 ## Resources
 
 **ERC-4626:**
-- EIP specification: https://eips.ethereum.org/EIPS/eip-4626
-- Ethereum.org overview: https://ethereum.org/developers/docs/standards/tokens/erc-4626
-- OpenZeppelin implementation + security guide: https://docs.openzeppelin.com/contracts/5.x/erc4626
-- OpenZeppelin source: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol
+- [EIP-4626 specification](https://eips.ethereum.org/EIPS/eip-4626)
+- [Ethereum.org ERC-4626 overview](https://ethereum.org/developers/docs/standards/tokens/erc-4626)
+- [OpenZeppelin ERC-4626 implementation + security guide](https://docs.openzeppelin.com/contracts/5.x/erc4626)
+- [OpenZeppelin ERC4626.sol source](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol)
 
 **Inflation attack:**
-- MixBytes overview: https://mixbytes.io/blog/overview-of-the-inflation-attack
-- OpenZeppelin exchange rate risk analysis: https://www.openzeppelin.com/news/erc-4626-tokens-in-defi-exchange-rate-manipulation-risks
-- SpeedrunEthereum vault security: https://speedrunethereum.com/guides/erc-4626-vaults
+- [MixBytes — Overview of the inflation attack](https://mixbytes.io/blog/overview-of-the-inflation-attack)
+- [OpenZeppelin — ERC-4626 exchange rate manipulation risks](https://www.openzeppelin.com/news/erc-4626-tokens-in-defi-exchange-rate-manipulation-risks)
+- [SpeedrunEthereum — ERC-4626 vault security](https://speedrunethereum.com/guides/erc-4626-vaults)
 
 **Yearn V3:**
-- V3 overview: https://docs.yearn.fi/developers/v3/overview
-- VaultV3 spec: https://github.com/yearn/yearn-vaults-v3/blob/master/TECH_SPEC.md
-- Tokenized Strategy: https://github.com/yearn/tokenized-strategy
-- Strategy writing guide: https://docs.yearn.fi/developers/v3/strategy_writing_guide
+- [V3 overview](https://docs.yearn.fi/developers/v3/overview)
+- [VaultV3 technical spec](https://github.com/yearn/yearn-vaults-v3/blob/master/TECH_SPEC.md)
+- [Tokenized Strategy source](https://github.com/yearn/tokenized-strategy)
+- [Strategy writing guide](https://docs.yearn.fi/developers/v3/strategy_writing_guide)
 
 **Modular DeFi / Curators:**
-- Morpho documentation: https://docs.morpho.org
-- Euler V2 documentation: https://docs.euler.finance
+- [Morpho documentation](https://docs.morpho.org)
+- [Euler V2 documentation](https://docs.euler.finance)
 
 ---
 

@@ -343,6 +343,20 @@ Audit reports are the densest source of real-world vulnerability knowledge. A si
 - The fix recommendation — how would you have solved it?
 - Informational findings — these reveal common anti-patterns and code smell
 
+#### 📖 How to Study Audit Reports Effectively
+
+1. **Read the executive summary and scope first** — Understand what the protocol does and which contracts were audited. If the audit covers only core contracts but not periphery/integrations, that's a significant limitation. Note the Solidity version, framework, and any unusual architecture choices the auditors call out.
+
+2. **Read Critical and High findings deeply** — For each one: read the description, then STOP. Before reading the impact/PoC, ask yourself: "How would I exploit this?" Try to construct the attack mentally. Then read the auditor's impact assessment and PoC. Compare your thinking to theirs — this builds attacker intuition.
+
+3. **Classify each finding into your mental taxonomy** — Is it reentrancy? Oracle manipulation? Access control? Logic error? Rounding? Map each finding to the attack patterns from Day 1. Over time, you'll see the same categories appear across every audit. This is the pattern recognition that makes you faster at finding bugs.
+
+4. **Read the fix, then evaluate it** — Does the fix address the root cause or just the symptom? Would you have fixed it differently? Sometimes the auditor's recommendation is a patch, but a better fix involves rearchitecting. Forming your own opinion on fixes is where you develop design judgment.
+
+5. **Track informational findings** — These aren't exploitable, but they reveal what auditors consider code smell: missing events, inconsistent naming, unused variables, gas inefficiencies. If you see the same informational finding across multiple audits (you will), it's a pattern to avoid in your own code.
+
+**Don't get stuck on:** Reading every finding in a 50+ finding report. Focus on Critical/High first, skim Medium, read Informational titles only. A single Critical finding teaches more than ten Informational ones.
+
 ### Report 1: Aave V3 Core (OpenZeppelin, Trail of Bits)
 
 **Source:** Search for "Aave V3 audit report OpenZeppelin" or "Aave V3 audit Trail of Bits" — both are publicly available.
@@ -548,35 +562,35 @@ Complete any remaining Damn Vulnerable DeFi and Ethernaut challenges not yet att
 ## Resources
 
 **Vulnerability references:**
-- OWASP Smart Contract Top 10 (2025): https://owasp.org/www-project-smart-contract-top-10/
-- Three Sigma 2024 exploit analysis: https://threesigma.xyz/blog/exploit/2024-defi-exploits-top-vulnerabilities
-- SWC Registry (Smart Contract Weakness Classification): https://swcregistry.io/
-- Cyfrin reentrancy guide: https://www.cyfrin.io/blog/what-is-a-reentrancy-attack-solidity-smart-contracts
+- [OWASP Smart Contract Top 10 (2025)](https://owasp.org/www-project-smart-contract-top-10/)
+- [Three Sigma — 2024 most exploited DeFi vulnerabilities](https://threesigma.xyz/blog/exploit/2024-defi-exploits-top-vulnerabilities)
+- [SWC Registry (Smart Contract Weakness Classification)](https://swcregistry.io/)
+- [Cyfrin — Reentrancy attack guide](https://www.cyfrin.io/blog/what-is-a-reentrancy-attack-solidity-smart-contracts)
 
 **Audit reports:**
-- Trail of Bits public audits: https://github.com/trailofbits/publications/tree/master/reviews
-- OpenZeppelin audits: https://blog.openzeppelin.com/security-audits
-- Cyfrin audit reports: https://www.cyfrin.io/blog
-- Spearbit: https://spearbit.com
-- Immunefi bug bounty writeups: https://medium.com/immunefi
+- [Trail of Bits public audits](https://github.com/trailofbits/publications/tree/master/reviews)
+- [OpenZeppelin audits](https://blog.openzeppelin.com/security-audits)
+- [Cyfrin audit reports](https://www.cyfrin.io/blog)
+- [Spearbit](https://spearbit.com)
+- [Immunefi bug bounty writeups](https://medium.com/immunefi)
 
 **Testing:**
-- Foundry invariant testing docs: https://getfoundry.sh/forge/invariant-testing
-- RareSkills invariant testing tutorial: https://rareskills.io/post/invariant-testing-solidity
-- Cyfrin fuzz testing guide: https://www.cyfrin.io/blog/smart-contract-fuzzing-and-invariants-testing-foundry
+- [Foundry invariant testing docs](https://getfoundry.sh/forge/invariant-testing)
+- [RareSkills — Invariant testing tutorial](https://rareskills.io/post/invariant-testing-solidity)
+- [Cyfrin — Fuzz testing and invariants guide](https://www.cyfrin.io/blog/smart-contract-fuzzing-and-invariants-testing-foundry)
 
 **Static analysis:**
-- Slither: https://github.com/crytic/slither
-- Aderyn: https://github.com/Cyfrin/aderyn
+- [Slither](https://github.com/crytic/slither)
+- [Aderyn](https://github.com/Cyfrin/aderyn)
 
 **Formal verification:**
-- Certora documentation: https://docs.certora.com
-- Certora tutorials: https://github.com/Certora/tutorials
+- [Certora documentation](https://docs.certora.com)
+- [Certora tutorials](https://github.com/Certora/tutorials)
 
 **Practice:**
-- Damn Vulnerable DeFi (v4): https://www.damnvulnerabledefi.xyz
-- Ethernaut: https://ethernaut.openzeppelin.com
-- Cyfrin Updraft security course (free): https://updraft.cyfrin.io
+- [Damn Vulnerable DeFi (v4)](https://www.damnvulnerabledefi.xyz)
+- [Ethernaut](https://ethernaut.openzeppelin.com)
+- [Cyfrin Updraft security course (free)](https://updraft.cyfrin.io)
 
 ---
 

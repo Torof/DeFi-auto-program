@@ -295,6 +295,22 @@ Trace the supply path through Aave V3:
 
 > **Common pitfall:** Not accounting for accrued interest when calculating max borrow. Debt grows continuously, so the maximum borrowable amount decreases over time even if collateral price stays constant.
 
+#### 📖 How to Study Aave V3 Architecture
+
+The Aave V3 codebase is ~15,000+ lines across many libraries. Here's how to approach it without getting lost:
+
+1. **Start with the Pool proxy entry points** — Open [Pool.sol](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/pool/Pool.sol) and read just the function signatures. Each one (`supply`, `borrow`, `repay`, `withdraw`, `liquidationCall`) delegates to a Logic library. Map the routing: which function calls which library.
+
+2. **Trace one complete flow end-to-end** — Pick `supply()`. Follow it into [SupplyLogic.sol](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/SupplyLogic.sol). Read every line of `executeSupply()`. Note: index update → transfer → mint aTokens → update user config bitmap. Draw this as a sequence diagram.
+
+3. **Understand the data model** — Read [DataTypes.sol](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/types/DataTypes.sol). The `ReserveData` struct is the central state. Map each field to what it controls (indexes for interest, configuration bitmap for risk params, address pointers for aToken/debtToken).
+
+4. **Read the index math** — Open [ReserveLogic.sol](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/ReserveLogic.sol) and trace `updateState()` → `_updateIndexes()`. This is the compound interest accumulation. Then read how `balanceOf()` in [AToken.sol](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/tokenization/AToken.sol) uses the index to compute the live balance.
+
+5. **Then read ValidationLogic.sol** — This is where all the safety checks live: health factor validation, borrow cap checks, E-Mode constraints. Read `validateBorrow()` to understand every condition that must pass before a borrow succeeds.
+
+**Don't get stuck on:** The configuration bitmap encoding initially. It's clever bit manipulation (Part 1 Section 1 territory) but you can treat `getters` as black boxes on first pass. Focus on the flow: entry point → logic library → state update → token operations.
+
 ---
 
 ### Credit Delegation
@@ -529,6 +545,22 @@ Key functions to read:
 - [`isLiquidatable()`](https://github.com/compound-finance/comet/blob/main/contracts/Comet.sol#L555): Health check using collateral factors and oracle prices
 
 **Note:** Compound V3 is ~4,300 lines of Solidity (excluding comments). This is compact for a lending protocol and very readable.
+
+#### 📖 How to Study Compound V3 (Comet)
+
+Comet is dramatically simpler than Aave — one contract, ~4,300 lines. This makes it the better starting point if you're new to lending protocol code.
+
+1. **Start with the state variables** — Open [Comet.sol](https://github.com/compound-finance/comet/blob/main/contracts/Comet.sol) and read the immutable declarations (lines ~65-109). These ARE the protocol configuration — base token, interest rate params, collateral factors, oracle feeds. Notice: all immutable, not storage. Understanding why this matters (gas) and the trade-off (redeployment for changes) is key.
+
+2. **Read `supplyInternal()` and `withdrawInternal()`** — These are the core flows. Notice the signed principal pattern: supplying when you have debt first repays debt. Withdrawing when you have no supply creates a borrow. This dual behavior is elegant but different from Aave's separate supply/borrow paths.
+
+3. **Trace the index update in `accrueInternal()`** — This is simpler than Aave's version. One function, linear compound, per-second rates. Map how `baseSupplyIndex` and `baseBorrowIndex` grow over time.
+
+4. **Read `isLiquidatable()`** — Follow the health check: for each collateral asset, fetch oracle price, multiply by collateral factor, sum up. Compare to borrow balance. This is the health factor equivalent, computed inline rather than as a separate ratio.
+
+5. **Compare with Aave** — After reading both, you should be able to articulate: why did Compound choose a single-asset model? (Risk isolation.) Why immutables? (Gas.) Why signed principal? (Simplicity — no separate debt tokens.) These are the architectural trade-offs interviewers ask about.
+
+**Don't get stuck on:** The `CometExt` fallback pattern. It's a workaround for the 24KB contract size limit — auxiliary functions are deployed separately and called via the fallback function. Understand that it exists, but focus on the core Comet logic.
 
 ---
 

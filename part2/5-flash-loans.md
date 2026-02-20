@@ -121,6 +121,20 @@ Simpler than Aave's because there are no interest rate modes. The Vault:
 
 Balancer V3 introduces a transient unlock model similar to V4's flash accounting — the Vault must be "unlocked" and balances must be settled before the transaction ends.
 
+#### 📖 How to Study Flash Loan Provider Code
+
+1. **Start with the interface** — Read `IFlashLoanSimpleReceiver` (Aave) or `IFlashLoanRecipient` (Balancer). These tell you exactly what your callback must implement. Map the parameters: what data flows in, what the provider expects back.
+
+2. **Trace the provider's flow in 3 steps** — Every flash loan provider follows the same pattern: (a) transfer tokens out, (b) call your callback, (c) verify repayment. In Aave's [FlashLoanLogic.sol](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/FlashLoanLogic.sol), find these three steps in `executeFlashLoanSimple()`. Note how the premium is computed before the callback — your contract knows exactly what to repay.
+
+3. **Read the repayment verification** — This is where providers differ. Aave pulls tokens via `transferFrom` (you must approve). Balancer checks its own balance increased. Uniswap V2 verifies the constant product invariant. Understanding the verification mechanism tells you what your callback must do to succeed.
+
+4. **Study the `modes[]` parameter** (Aave only) — In the multi-asset `flashLoan()`, mode 0 = repay, mode 1 = open variable debt, mode 2 = open stable debt. This enables "flash borrow and keep" patterns (collateral swap, leverage). This parameter doesn't exist in Balancer or Uniswap.
+
+5. **Compare gas costs** — Deploy identical flash loans on an Aave fork vs Balancer fork. The gas difference comes from: Aave's premium calculation + aToken mint + index update vs Balancer's simpler balance check. This informs your provider choice in production.
+
+**Don't get stuck on:** Aave's referral code system or Balancer's internal token accounting beyond the flash loan flow. Focus on the borrow → callback → repay cycle.
+
 ### Exercise
 
 **Exercise 1:** Build a minimal Aave V3 flash loan receiver. On a mainnet fork:
@@ -374,22 +388,22 @@ This tests your ability to nest or chain flash loans from different providers. N
 ## Resources
 
 **Aave flash loans:**
-- Developer guide: https://aave.com/docs/aave-v3/guides/flash-loans
-- FlashLoanLogic.sol source: https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/FlashLoanLogic.sol
-- Cyfrin Aave V3 flash loan lesson: https://updraft.cyfrin.io/courses/aave-v3/contract-architecture/flash-loan
+- [Developer guide](https://aave.com/docs/aave-v3/guides/flash-loans)
+- [FlashLoanLogic.sol source](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/FlashLoanLogic.sol)
+- [Cyfrin Aave V3 flash loan lesson](https://updraft.cyfrin.io/courses/aave-v3/contract-architecture/flash-loan)
 
 **Balancer flash loans:**
-- V2 documentation: https://docs-v2.balancer.fi/reference/contracts/flash-loans.html
-- V3 documentation: https://docs.balancer.fi/concepts/vault/flash-loans.html
+- [V2 documentation](https://docs-v2.balancer.fi/reference/contracts/flash-loans.html)
+- [V3 documentation](https://docs.balancer.fi/concepts/vault/flash-loans.html)
 
 **Uniswap flash swaps/accounting:**
-- V2 flash swaps: https://docs.uniswap.org/contracts/v2/guides/smart-contract-integration/using-flash-swaps
-- V4 flash accounting: https://docs.uniswap.org/contracts/v4/concepts/flash-accounting
+- [V2 flash swaps](https://docs.uniswap.org/contracts/v2/guides/smart-contract-integration/using-flash-swaps)
+- [V4 flash accounting](https://docs.uniswap.org/contracts/v4/concepts/flash-accounting)
 
 **Flash loan attacks and security:**
-- Cyfrin — Flash loan attack patterns: https://www.cyfrin.io/blog/price-oracle-manipulation-attacks-with-examples
-- RareSkills — Flash loan guide: https://rareskills.io/post/flash-loan
-- samczsun — Taking undercollateralized loans for fun and for profit (classic): https://samczsun.com/taking-undercollateralized-loans-for-fun-and-for-profit/
+- [Cyfrin — Flash loan attack patterns](https://www.cyfrin.io/blog/price-oracle-manipulation-attacks-with-examples)
+- [RareSkills — Flash loan guide](https://rareskills.io/post/flash-loan)
+- [samczsun — Taking undercollateralized loans for fun and for profit](https://samczsun.com/taking-undercollateralized-loans-for-fun-and-for-profit/) (classic)
 
 ---
 

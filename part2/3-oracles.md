@@ -153,6 +153,22 @@ interface AggregatorV3Interface {
 
 > **Used by:** [Aave V3 AaveOracle](https://github.com/aave/aave-v3-core/blob/master/contracts/misc/AaveOracle.sol#L107), [Compound V3 price feeds](https://github.com/compound-finance/comet/blob/main/contracts/Comet.sol#L1095), [Synthetix ExchangeRates](https://github.com/Synthetixio/synthetix/blob/develop/contracts/ExchangeRates.sol)
 
+#### 📖 How to Study Oracle Integration in Production Code
+
+When reading how a production protocol consumes oracle data:
+
+1. **Find the oracle wrapper contract** — Most protocols don't call Chainlink directly from core logic. Look for a dedicated oracle contract (e.g., Aave's `AaveOracle.sol`, Compound's price feed configuration in `Comet.sol`). This wrapper centralizes feed addresses, decimal normalization, and staleness checks.
+
+2. **Trace the price from consumer to feed** — Start at the function that uses the price (e.g., `getCollateralValue()` or `isLiquidatable()`) and follow backward: what calls what? How is the raw `int256 answer` transformed into the final `uint256 price` the protocol uses? Map the decimal conversions at each step.
+
+3. **Check what validations exist** — Look for: `answer > 0`, `updatedAt` staleness check, `answeredInRound >= roundId`, sequencer uptime check (L2). Count which checks are present and which are missing — auditors flag missing checks constantly.
+
+4. **Compare two protocols' approaches** — Read [Aave's AaveOracle.sol](https://github.com/aave/aave-v3-core/blob/master/contracts/misc/AaveOracle.sol) and [Liquity's PriceFeed.sol](https://github.com/liquity/dev/blob/main/packages/contracts/contracts/PriceFeed.sol) side by side. Aave uses a single Chainlink source per asset with governance fallback. Liquity uses Chainlink primary + Tellor fallback with automatic switching. Notice the trade-offs: simplicity vs resilience.
+
+5. **Study the fallback/failure paths** — What happens when the primary oracle fails? Does the protocol pause? Switch to a backup? Revert? Liquity's 5-state fallback machine is the most thorough example.
+
+**Don't get stuck on:** The OCR aggregation mechanics (how nodes agree off-chain). That's Chainlink's internal concern. Focus on what your protocol controls: which feed to use, how to validate the answer, and what to do when the feed fails.
+
 ---
 
 ### Build: Safe Chainlink Consumer

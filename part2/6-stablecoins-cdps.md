@@ -86,6 +86,22 @@ This is one of the most important contracts in DeFi. Focus on:
 
 The naming convention is terse (derived from formal specification): `ilk` = collateral type, `urn` = vault, `ink` = collateral amount, `art` = normalized debt, `gem` = unlocked collateral, `dai` = stablecoin balance, `sin` = system debt, `tab` = total debt for auction.
 
+#### 📖 How to Study the MakerDAO/dss Codebase
+
+The dss codebase is one of DeFi's most important — and one of the hardest to read due to its terse naming. Here's how to approach it:
+
+1. **Build a glossary first** — Before reading any code, memorize the core terms: `ilk` (collateral type), `urn` (vault), `ink` (locked collateral), `art` (normalized debt), `gem` (free collateral), `dai` (internal stablecoin), `sin` (bad debt), `rad`/`ray`/`wad` (precision scales: 45/27/18 decimals). Write these on a card and keep it visible while reading.
+
+2. **Read `frob()` line by line** — This single function IS the CDP system. It modifies collateral (`dink`) and debt (`dart`) simultaneously. Trace each `require` statement: what's it checking? Map them to: vault safety check (`ink × spot ≥ art × rate`), debt ceiling check (`Art × rate ≤ line`), dust check, and authorization. Understanding `frob()` means understanding the entire protocol.
+
+3. **Trace the authorization system** — `wards` mapping controls admin access. `can` mapping controls who can modify whose vaults. The `wish()` function checks both. This is unusual compared to OpenZeppelin's AccessControl — understand how `hope()` and `nope()` grant/revoke per-user permissions.
+
+4. **Read the Join adapters** — `GemJoin.join()` and `DaiJoin.exit()` are the bridges between external ERC-20 tokens and the Vat's internal accounting. These are short (~30 lines each) and clarify how the internal `gem` and `dai` balances relate to actual token balances.
+
+5. **Study `grab()` and `heal()`** — `grab()` is the forced version of `frob()` used during liquidation — it seizes collateral and creates `sin` (system debt). `heal()` cancels equal amounts of `dai` and `sin`. Together, they form the liquidation and recovery cycle: grab creates bad debt, auctions recover DAI, heal cancels the bad debt.
+
+**Don't get stuck on:** The formal verification annotations in comments. The dss codebase was designed for formal verification (which is why the naming is so terse — it maps to mathematical specifications). You can ignore the verification proofs and focus on the logic.
+
 ### Exercise
 
 **Exercise 1:** On a mainnet fork, trace a complete Vault lifecycle:
@@ -175,6 +191,20 @@ In `Clipper.kick()`, trace:
 - How the starting price is set (oracle price × buf)
 - The auction state struct
 - How `take()` works: price calculation via Abacus, partial fills, refunds
+
+#### 📖 How to Study MakerDAO Liquidation 2.0
+
+1. **Start with `Dog.bark()`** — This is the entry point. Trace: how does it verify the vault is unsafe? (Calls `Vat.urns()` and `Vat.ilks()`, checks `ink × spot < art × rate`.) How does it call `Vat.grab()` to seize collateral? How does it compute the `tab` (total debt including penalty)?
+
+2. **Read `Clipper.kick()`** — After `bark()` seizes collateral, `kick()` starts the auction. Focus on: how `top` (starting price) is computed as `oracle_price × buf`, how the auction struct stores the state, and how the keeper incentive (`tip` + `chip`) is calculated and paid.
+
+3. **Understand the Abacus price functions** — Read `LinearDecrease` first (simpler: price drops linearly over time). Then read `StairstepExponentialDecrease` (price drops in discrete steps). The key question: given a `tab` (debt to cover) and the current auction price, how much collateral does the `take()` caller receive?
+
+4. **Trace a complete `take()` call** — This is where collateral is actually sold. Follow: price lookup via Abacus → compute collateral amount for the DAI offered → handle partial fills (buyer wants less than the full lot) → refund excess collateral to the vault owner → cancel `sin` via `Vat.heal()`.
+
+5. **Study the circuit breakers** — `tail` (max auction duration), `cusp` (min price before reset), `Hole`/`hole` (max simultaneous DAI in auctions). These exist because of Black Thursday — without caps, a cascade of liquidations can overwhelm the system.
+
+**Don't get stuck on:** The `redo()` function initially — it's for restarting stale auctions. Understand `bark()` → `kick()` → `take()` first, then come back to `redo()` and the edge cases.
 
 ### Exercise
 
@@ -358,26 +388,26 @@ Map out the feedback loops. This is how decentralized monetary policy works.
 ## Resources
 
 **MakerDAO/Sky:**
-- Technical docs: https://docs.makerdao.com
-- Source code (dss): https://github.com/makerdao/dss
-- Vat documentation: https://docs.makerdao.com/smart-contract-modules/core-module/vat-detailed-documentation
-- Liquidation 2.0 docs: https://docs.makerdao.com/smart-contract-modules/dog-and-clipper-detailed-documentation
-- Developer guides: https://github.com/sky-ecosystem/developerguides
-- Sky Protocol whitepaper: https://makerdao.com/whitepaper
+- [Technical docs](https://docs.makerdao.com)
+- [Source code (dss)](https://github.com/makerdao/dss)
+- [Vat detailed documentation](https://docs.makerdao.com/smart-contract-modules/core-module/vat-detailed-documentation)
+- [Liquidation 2.0 (Dog & Clipper) documentation](https://docs.makerdao.com/smart-contract-modules/dog-and-clipper-detailed-documentation)
+- [Developer guides](https://github.com/sky-ecosystem/developerguides)
+- [Sky Protocol whitepaper](https://makerdao.com/whitepaper)
 
 **Liquity:**
-- Documentation: https://docs.liquity.org
-- Source code: https://github.com/liquity/dev
-- Liquity V2: https://www.liquity.org/v2
+- [Documentation](https://docs.liquity.org)
+- [Source code](https://github.com/liquity/dev)
+- [Liquity V2](https://www.liquity.org/v2)
 
 **Stablecoin analysis:**
-- CDP classical design: https://onekey.so/blog/learn/cdp-the-classical-aesthetics-of-stablecoins/
-- Ethena documentation: https://docs.ethena.fi
+- [CDP classical design](https://onekey.so/blog/learn/cdp-the-classical-aesthetics-of-stablecoins/)
+- [Ethena documentation](https://docs.ethena.fi)
 - Terra post-mortem: Search "Terra LUNA collapse analysis" for numerous detailed breakdowns
 
 **Black Thursday:**
 - MakerDAO Black Thursday post-mortem and Liquidation 2.0 rationale: MIP45 forum discussion
-- ChainSecurity Liquidation 2.0 audit: https://old.chainsecurity.com/wp-content/uploads/2021/04/ChainSecurity_MakerDAO_Liquidations2.0_Final.pdf
+- [ChainSecurity Liquidation 2.0 audit](https://old.chainsecurity.com/wp-content/uploads/2021/04/ChainSecurity_MakerDAO_Liquidations2.0_Final.pdf)
 
 ---
 
